@@ -3,6 +3,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { searchListings } from '@/lib/ebay/browse'
 import { fetchSoldComps } from '@/lib/ebay/finding'
 import { calculateFairValue, calculateRoiPct } from '@/lib/fair-value'
+import { sendAlertEmail } from '@/lib/resend'
+import { sendPushToAll } from '@/lib/push'
 
 function buildCardKey(player: string, set: string, grade: string): string {
   return [player, set, grade]
@@ -27,6 +29,7 @@ interface WatchlistFilters {
 
 interface Watchlist {
   id: string
+  name: string
   filters: WatchlistFilters
 }
 
@@ -38,18 +41,24 @@ export const dealScanner = inngest.createFunction(
     const watchlists = await step.run('fetch-watchlists', async () => {
       const { data, error } = await supabase
         .from('watchlists')
-        .select('id, filters')
+        .select('id, name, filters')
         .eq('is_active', true)
       if (error) throw new Error(error.message)
       return (data ?? []) as Watchlist[]
     })
 
-    // Fetch notification prefs once per scan run
+    // Fetch notification prefs + push subscriptions once per scan run
     const { data: prefs } = await supabase
       .from('notification_preferences')
       .select('email_enabled, email_address, push_enabled')
       .limit(1)
       .maybeSingle()
+
+    const { data: pushSubs } = prefs?.push_enabled
+      ? await supabase
+          .from('push_subscriptions')
+          .select('endpoint, p256dh, auth')
+      : { data: [] }
 
     let totalAlerts = 0
 
@@ -137,8 +146,31 @@ export const dealScanner = inngest.createFunction(
 
         totalAlerts++
 
-        // Notifications wired in Task 22 — prefs fetched above but not used yet
-        void prefs
+        // Fire notifications (non-blocking — don't fail the scan on notification errors)
+        const notifPayload = {
+          cardTitle: listing.title,
+          listedPrice: listing.price,
+          fairValue: Math.round(fairValueResult.fairValue * 100) / 100,
+          roiPct: Math.round(roiPct * 100) / 100,
+          listingUrl: listing.listingUrl,
+          watchlistName: watchlist.name,
+        }
+
+        if (prefs?.email_enabled && prefs.email_address) {
+          void sendAlertEmail({
+            to: prefs.email_address,
+            ...notifPayload,
+            cardTitle: notifPayload.cardTitle,
+          }).catch((err: unknown) => console.error('Email notification failed:', err))
+        }
+
+        if (prefs?.push_enabled && pushSubs && pushSubs.length > 0) {
+          void sendPushToAll(pushSubs, {
+            title: `Deal Alert: ${listing.title}`,
+            body: `+${notifPayload.roiPct.toFixed(1)}% below market — $${listing.price.toFixed(2)} listed`,
+            url: listing.listingUrl,
+          }).catch((err: unknown) => console.error('Push notification failed:', err))
+        }
       }
     }
 
