@@ -6,7 +6,7 @@ import { Bell, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 const navLinks = [
@@ -71,18 +71,22 @@ export function AppNav() {
             <SheetContent side="right" className="w-64 dark:bg-slate-900 dark:border-slate-800">
               <nav className="flex flex-col gap-1 mt-8">
                 {navLinks.map((link) => (
-                  <Link
+                  <SheetClose
                     key={link.href}
-                    href={link.href}
-                    className={cn(
-                      'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                      pathname === link.href
-                        ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300'
-                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                    )}
+                    render={
+                      <Link
+                        href={link.href}
+                        className={cn(
+                          'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                          pathname === link.href
+                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300'
+                            : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                        )}
+                      />
+                    }
                   >
                     {link.label}
-                  </Link>
+                  </SheetClose>
                 ))}
               </nav>
             </SheetContent>
