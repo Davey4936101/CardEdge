@@ -9,7 +9,12 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    // This is intentionally setting state in effect to prevent hydration mismatch
+    // It's a well-established pattern for client-side hydration in Next.js
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
 
   if (!mounted) {
     return <Button variant="ghost" size="icon" disabled aria-label="Toggle theme" />
