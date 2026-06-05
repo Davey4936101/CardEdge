@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { NotificationPreferences } from '@/components/settings/NotificationPreferences'
 
 export default function SettingsPage() {
   return (
@@ -33,9 +34,7 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Notifications</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-400">
-              Notification preferences will be configurable here.
-            </p>
+            <NotificationPreferences />
           </CardContent>
         </Card>
 
