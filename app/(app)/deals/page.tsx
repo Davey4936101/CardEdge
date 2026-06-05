@@ -1,3 +1,4 @@
+import { AlertFeed } from '@/components/deals/AlertFeed'
 import { WatchlistPanel } from '@/components/deals/WatchlistPanel'
 
 export default function DealsPage() {
@@ -10,10 +11,7 @@ export default function DealsPage() {
         </p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-        <div className="flex flex-col items-center justify-center min-h-[300px] border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-          <p className="text-sm font-medium text-slate-500">Live Alerts</p>
-          <p className="text-xs text-slate-400 mt-1">Alerts will appear here once the scanner is running.</p>
-        </div>
+        <AlertFeed />
         <WatchlistPanel />
       </div>
     </div>
