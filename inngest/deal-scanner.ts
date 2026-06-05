@@ -31,8 +31,7 @@ interface Watchlist {
 }
 
 export const dealScanner = inngest.createFunction(
-  { id: 'deal-scanner' },
-  { cron: '*/5 * * * *' },
+  { id: 'deal-scanner', triggers: [{ cron: '*/5 * * * *' }] },
   async ({ step }) => {
     const supabase = createServerClient()
 
