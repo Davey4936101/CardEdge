@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { BookmarkPlus } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { BookmarkPlus, RefreshCw, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'price_asc', label: 'Price ↑' },
 ]
 
+type ScanState = 'idle' | 'scanning' | 'done' | 'error'
+
 export function DealFeed() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +38,9 @@ export function DealFeed() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [watchlistOpen, setWatchlistOpen] = useState(false)
+  const [scanState, setScanState] = useState<ScanState>('idle')
+  const [lastScanCount, setLastScanCount] = useState<number | null>(null)
+  const autoScanFired = useRef(false)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/alerts')
@@ -43,6 +48,27 @@ export function DealFeed() {
     setAlerts(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])
+
+  // Trigger the on-demand scan endpoint. `full` scans all 13 queries;
+  // default scans the first 4 in parallel (~5-8s).
+  const triggerScan = useCallback(async (full = false) => {
+    setScanState('scanning')
+    try {
+      const res = await fetch('/api/deals/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full }),
+      })
+      if (!res.ok) throw new Error('Scan failed')
+      const { newDeals } = (await res.json()) as { newDeals: number }
+      setLastScanCount(newDeals)
+      setScanState('done')
+      // Reload alerts to reflect newly inserted rows
+      await load()
+    } catch {
+      setScanState('error')
+    }
+  }, [load])
 
   useEffect(() => {
     void load()
@@ -54,6 +80,14 @@ export function DealFeed() {
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
   }, [load])
+
+  // Auto-scan once on first load if the feed is empty
+  useEffect(() => {
+    if (!loading && alerts.length === 0 && !autoScanFired.current) {
+      autoScanFired.current = true
+      void triggerScan(false)
+    }
+  }, [loading, alerts.length, triggerScan])
 
   // Reset pagination when filters or sort change
   useEffect(() => { setPage(1) }, [filters, sortKey])
@@ -72,6 +106,7 @@ export function DealFeed() {
   const sorted = sortAlerts(filtered, sortKey)
   const visible = sorted.slice(0, page * PAGE_SIZE)
   const hasMore = visible.length < sorted.length
+  const isScanning = scanState === 'scanning'
 
   return (
     <>
@@ -79,22 +114,45 @@ export function DealFeed() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Deal Discovery</h1>
-          {!loading && (
+          {!loading && !isScanning && (
             <p className="text-sm text-slate-500 mt-0.5">
-              {sorted.length} deal{sorted.length !== 1 ? 's' : ''} found
-              {filtered.length !== alerts.length && ` (${alerts.length} total)`}
+              {sorted.length > 0
+                ? `${sorted.length} deal${sorted.length !== 1 ? 's' : ''} found`
+                : scanState === 'done'
+                ? lastScanCount === 0
+                  ? 'No deals above threshold right now — try again later'
+                  : `Scan complete · ${alerts.length} deal${alerts.length !== 1 ? 's' : ''} found`
+                : 'Loading…'}
+              {sorted.length > 0 && filtered.length !== alerts.length && ` (${alerts.length} total)`}
+            </p>
+          )}
+          {isScanning && (
+            <p className="text-sm text-indigo-400 mt-0.5 animate-pulse">
+              Scanning eBay for deals…
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setWatchlistOpen(true)}
-          className="gap-1.5"
-        >
-          <BookmarkPlus className="size-4" />
-          Watchlists
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void triggerScan(true)}
+            disabled={isScanning}
+            className="gap-1.5"
+          >
+            <RefreshCw className={`size-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Scanning…' : 'Refresh'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setWatchlistOpen(true)}
+            className="gap-1.5"
+          >
+            <BookmarkPlus className="size-4" />
+            Watchlists
+          </Button>
+        </div>
       </div>
 
       {/* Layout */}
@@ -121,27 +179,52 @@ export function DealFeed() {
           </div>
 
           {/* Feed */}
-          {loading ? (
+          {loading || isScanning ? (
             <div className="space-y-3">
+              {isScanning && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-indigo-900/40 bg-indigo-950/20 mb-4">
+                  <Zap className="size-4 text-indigo-400 animate-pulse flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-indigo-300">
+                      Scanning eBay for top deals…
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Checking active listings against 90-day sold comps. This takes ~10 seconds.
+                    </p>
+                  </div>
+                </div>
+              )}
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="h-[132px] rounded-xl bg-slate-800/40 animate-pulse border border-slate-800" />
               ))}
             </div>
           ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-slate-800 rounded-xl gap-3">
-              <p className="text-sm font-medium text-slate-500">No deals match your filters</p>
-              <p className="text-xs text-slate-600">
-                {alerts.length === 0
-                  ? 'Deals appear here as watchlists scan eBay every 5 minutes.'
-                  : 'Try relaxing the filters above.'}
-              </p>
-              {alerts.length === 0 && (
-                <button
-                  onClick={() => setWatchlistOpen(true)}
-                  className="text-sm text-indigo-500 hover:text-indigo-400 transition-colors"
-                >
-                  Set up a watchlist →
-                </button>
+              {scanState === 'error' ? (
+                <>
+                  <p className="text-sm font-medium text-slate-500">Scan failed</p>
+                  <p className="text-xs text-slate-600">
+                    Could not reach eBay. Check that RAPIDAPI_KEY is set and try again.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => void triggerScan(false)}>
+                    Retry
+                  </Button>
+                </>
+              ) : alerts.length === 0 ? (
+                <>
+                  <p className="text-sm font-medium text-slate-500">No deals found yet</p>
+                  <p className="text-xs text-slate-600">
+                    The scanner checks eBay every 30 minutes. You can also scan now.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => void triggerScan(false)} className="gap-1.5">
+                    <RefreshCw className="size-3.5" /> Scan now
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-slate-500">No deals match your filters</p>
+                  <p className="text-xs text-slate-600">Try relaxing the filters in the sidebar.</p>
+                </>
               )}
             </div>
           ) : (
