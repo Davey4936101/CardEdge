@@ -49,8 +49,13 @@ export function CaptureFlow({ onComplete }: Props) {
     const urls: string[] = []
     for (const file of files) {
       if (!file) continue
-      // Convert File to object URL for display; the API route will handle upload
-      urls.push(URL.createObjectURL(file))
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      urls.push(dataUri)
     }
     onComplete(urls)
   }

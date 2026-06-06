@@ -1,6 +1,7 @@
 // lib/grade/card-identify.ts
 import Anthropic from '@anthropic-ai/sdk'
 import type { CardIdentity } from './types'
+import { toAnthropicImageSource } from './image-source'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -61,7 +62,7 @@ If you cannot determine any field, use null for that field.`
         {
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'url', url: imageUrl } },
+            { type: 'image', source: toAnthropicImageSource(imageUrl) },
             { type: 'text', text: prompt },
           ],
         },

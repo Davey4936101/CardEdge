@@ -1,6 +1,7 @@
 // lib/grade/attribute-analysis.ts
 import Anthropic from '@anthropic-ai/sdk'
 import type { AttributeResult, AttributeName } from './types'
+import { toAnthropicImageSource } from './image-source'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -59,7 +60,7 @@ export async function analyzeAttributes(
 
   const imageBlocks = allImages.map((url) => ({
     type: 'image' as const,
-    source: { type: 'url' as const, url },
+    source: toAnthropicImageSource(url),
   }))
 
   const response = await client.messages.create({

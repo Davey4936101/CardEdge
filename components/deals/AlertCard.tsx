@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ExternalLink, ShoppingCart } from 'lucide-react'
+import { timeAgo } from '@/lib/utils'
 
 export interface Alert {
   id: string
@@ -23,14 +24,6 @@ export interface Alert {
 interface AlertCardProps {
   alert: Alert
   onRead: (id: string) => void
-}
-
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
 }
 
 function timeUntil(dateStr: string): string | null {
@@ -56,7 +49,7 @@ function RoiBadge({ roi }: { roi: number }) {
       className={`flex-shrink-0 w-16 flex items-center justify-center rounded-lg border font-mono font-bold text-base tabular-nums ${color}`}
       style={{ minHeight: '72px' }}
     >
-      +{roi.toFixed(0)}%
+      {roi >= 0 ? '+' : ''}{roi.toFixed(0)}%
     </div>
   )
 }

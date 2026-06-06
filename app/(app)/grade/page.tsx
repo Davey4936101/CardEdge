@@ -18,11 +18,7 @@ import { CaveatList } from '@/components/grade/CaveatList'
 import { AnalysisHistory } from '@/components/grade/AnalysisHistory'
 import type { GradeAnalysisRow } from '@/lib/grade/types'
 
-type Stage =
-  | 'input'
-  | 'confirm-card'
-  | 'analyzing'
-  | 'result'
+type Stage = 'input' | 'analyzing' | 'result'
 
 export default function GradePage() {
   const router = useRouter()
@@ -98,7 +94,6 @@ export default function GradePage() {
                 listingTitle={ebayMeta?.title}
                 suggestedPrice={ebayMeta?.price ?? undefined}
                 onConfirm={(price) => {
-                  setStage('confirm-card')
                   startAnalysis(price)
                 }}
               />
@@ -107,8 +102,13 @@ export default function GradePage() {
         </div>
       )}
 
-      {stage === 'analyzing' && analysisId && (
-        <AnalysisLoader analysisId={analysisId} onComplete={onAnalysisComplete} />
+      {stage === 'analyzing' && (
+        analysisId
+          ? <AnalysisLoader analysisId={analysisId} onComplete={onAnalysisComplete} />
+          : <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <div className="h-10 w-10 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin" />
+              <p className="text-sm text-slate-400">Starting analysis…</p>
+            </div>
       )}
 
       {stage === 'result' && result && (

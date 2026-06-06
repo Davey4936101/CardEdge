@@ -3,19 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
+import { timeAgo } from '@/lib/utils'
 import { AlertCard, type Alert } from './AlertCard'
 import type { DealsStatus } from '@/app/api/deals/status/route'
 
 type SortKey = 'roi' | 'newest' | 'price'
 type FilterKey = 'all' | 'unread'
-
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
-}
 
 function sortAlerts(alerts: Alert[], key: SortKey): Alert[] {
   return [...alerts].sort((a, b) => {
@@ -103,7 +96,7 @@ export function AlertFeed({ onManageWatchlists }: AlertFeedProps) {
             <button
               key={key}
               onClick={() => setSortKey(key)}
-              className={`px-2 py-1 rounded transition-colors ${sortKey === key ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-2 py-1 rounded transition-colors ${sortKey === key ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               {key === 'roi' ? 'ROI %' : key === 'newest' ? 'Newest' : 'Price'}
             </button>
@@ -115,7 +108,7 @@ export function AlertFeed({ onManageWatchlists }: AlertFeedProps) {
             <button
               key={key}
               onClick={() => setFilterKey(key)}
-              className={`px-2 py-1 rounded transition-colors ${filterKey === key ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-2 py-1 rounded transition-colors ${filterKey === key ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               {key === 'all' ? 'All' : 'Unread'}
             </button>

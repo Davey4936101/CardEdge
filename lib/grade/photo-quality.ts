@@ -1,5 +1,6 @@
 // lib/grade/photo-quality.ts
 import type { PhotoQualityResult, Reliability } from './types'
+import { estimateDataUriBytes } from './image-source'
 
 interface ImageMetadata {
   url: string
@@ -29,12 +30,17 @@ function scoreResolution(width?: number, height?: number, bytes?: number): Relia
 export async function scorePhotoQuality(imageUrl: string): Promise<PhotoQualityResult> {
   let contentLengthBytes: number | undefined
 
-  try {
-    const head = await fetch(imageUrl, { method: 'HEAD' })
-    const cl = head.headers.get('content-length')
-    if (cl) contentLengthBytes = parseInt(cl, 10)
-  } catch {
-    // ignore — URL may not support HEAD
+  const dataUriBytes = estimateDataUriBytes(imageUrl)
+  if (dataUriBytes !== undefined) {
+    contentLengthBytes = dataUriBytes
+  } else {
+    try {
+      const head = await fetch(imageUrl, { method: 'HEAD' })
+      const cl = head.headers.get('content-length')
+      if (cl) contentLengthBytes = parseInt(cl, 10)
+    } catch {
+      // ignore — URL may not support HEAD
+    }
   }
 
   const resolution = scoreResolution(undefined, undefined, contentLengthBytes)

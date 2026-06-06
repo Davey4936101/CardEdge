@@ -15,8 +15,8 @@ function getReliability(count: number): 'high' | 'medium' | 'low' {
 
 const MESSAGES = {
   high: null,
-  medium: '⚠ Medium Reliability — seller photos have limited coverage. Surface estimate may be inaccurate.',
-  low: '⚠ Low Reliability — only one photo available. This estimate is directional only. Consider requesting better photos before bidding.',
+  medium: 'Medium reliability — seller photos have limited coverage. Surface estimate may be inaccurate.',
+  low: 'Low reliability — only one photo available. This estimate is directional only. Consider requesting better photos before bidding.',
 }
 
 export function ReliabilityBanner({ imageUrls }: Props) {

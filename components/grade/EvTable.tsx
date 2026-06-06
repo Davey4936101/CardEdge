@@ -31,7 +31,7 @@ export function EvTable({ result }: Props) {
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800">
               <th className="px-5 py-3 text-left font-medium text-slate-500">Tier</th>
-              <th className="px-5 py-3 text-right font-medium text-slate-500">Cost</th>
+              <th className="px-5 py-3 text-right font-medium text-slate-500">Total In</th>
               <th className="px-5 py-3 text-right font-medium text-slate-500">EV Graded</th>
               <th className="px-5 py-3 text-right font-medium text-slate-500">Exp. Profit</th>
               <th className="px-5 py-3 text-left font-medium text-slate-500">Turnaround</th>

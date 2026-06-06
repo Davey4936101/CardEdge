@@ -1,16 +1,17 @@
 // lib/grade/centering.ts
 import type { CenteringResult } from './types'
+import { fetchImageBuffer } from './image-source'
 
 const CV_SERVICE_URL = process.env.CV_SERVICE_URL ?? 'http://localhost:8001'
 
 export async function measureCentering(imageUrl: string): Promise<CenteringResult> {
   try {
-    // Fetch the image
-    const imageRes = await fetch(imageUrl)
-    if (!imageRes.ok) {
+    let imageBuffer: ArrayBuffer
+    try {
+      imageBuffer = await fetchImageBuffer(imageUrl)
+    } catch {
       return { leftRight: 50, topBottom: 50, psa10Eligible: false, confidence: 'low', error: 'image_fetch_failed' }
     }
-    const imageBuffer = await imageRes.arrayBuffer()
 
     // Send to CV microservice
     const form = new FormData()

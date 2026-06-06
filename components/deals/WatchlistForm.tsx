@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-const GRADES = ['Any', 'Raw', 'PSA 9', 'PSA 10', 'BGS 9.5', 'BGS 10', 'SGC 10']
+const GRADES = ['Any', 'PSA 10', 'PSA 9', 'PSA 8', 'PSA 7', 'PSA 6', 'Raw']
 
 interface WatchlistFormInitial {
   id?: string
