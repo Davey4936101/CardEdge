@@ -7,7 +7,7 @@ import { KpiCard } from '@/components/dashboard/KpiCard'
 import { EmptyFeed } from '@/components/dashboard/EmptyFeed'
 import { timeAgo, greeting } from '@/lib/utils'
 import type { PortfolioSummary } from '@/lib/portfolio/types'
-import type { Alert } from '@/components/deals/AlertCard'
+import type { Alert } from '@/lib/deals/deal-score'
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null)
