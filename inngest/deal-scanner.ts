@@ -1,7 +1,6 @@
 import { inngest } from './client'
 import { createServerClient } from '@/lib/supabase/server'
-import { searchListings } from '@/lib/ebay/browse'
-import { fetchSoldComps } from '@/lib/ebay/finding'
+import { searchListings, fetchSoldComps } from '@/lib/ebay/rapidapi'
 import { calculateFairValue, calculateRoiPct } from '@/lib/fair-value'
 import { sendAlertEmail } from '@/lib/resend'
 import { sendPushToAll } from '@/lib/push'
@@ -172,6 +171,11 @@ export const dealScanner = inngest.createFunction(
           }).catch((err: unknown) => console.error('Push notification failed:', err))
         }
       }
+
+      await supabase
+        .from('watchlists')
+        .update({ last_scanned_at: new Date().toISOString() })
+        .eq('id', watchlist.id)
     }
 
     return { watchlistsScanned: watchlists.length, alertsGenerated: totalAlerts }

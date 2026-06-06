@@ -1,5 +1,5 @@
 // lib/grade/graded-comps.ts
-import { fetchSoldComps } from '@/lib/ebay/finding'
+import { fetchSoldComps } from '@/lib/ebay/rapidapi'
 import { calculateFairValue } from '@/lib/fair-value'
 import type { GradeKey, GradedComps } from './types'
 

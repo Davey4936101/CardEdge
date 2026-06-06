@@ -1,5 +1,5 @@
 // lib/grade/grade-dist-cache.ts
-import { fetchSoldComps } from '@/lib/ebay/finding'
+import { searchListings } from '@/lib/ebay/rapidapi'
 import { createServerClient } from '@/lib/supabase/server'
 import type { GradeDistribution, GradeKey } from './types'
 
@@ -20,45 +20,13 @@ interface GradeCount {
   total: number
 }
 
-async function fetchFromEbay(cardKey: string, player: string, year: number, set: string): Promise<GradeCount> {
-  // fetchSoldComps only returns price+date; we need titles too.
-  // Call the Finding API directly for this query to get titles.
-  const base =
-    process.env.EBAY_ENVIRONMENT === 'sandbox'
-      ? 'https://svcs.sandbox.ebay.com'
-      : 'https://svcs.ebay.com'
-
-  const params = new URLSearchParams()
-  params.set('OPERATION-NAME', 'findCompletedItems')
-  params.set('SERVICE-VERSION', '1.0.0')
-  params.set('SECURITY-APPNAME', process.env.EBAY_CLIENT_ID || '')
-  params.set('RESPONSE-DATA-FORMAT', 'JSON')
-  params.set('REST-PAYLOAD', 'true')
-  params.set('keywords', `${player} ${year} ${set} PSA`)
-  params.set('categoryId', '212')
-  params.set('itemFilter(0).name', 'SoldItemsOnly')
-  params.set('itemFilter(0).value', 'true')
-  params.set('paginationInput.entriesPerPage', '100')
-  params.set('outputSelector', 'SellerInfo')
-
-  const res = await fetch(`${base}/services/search/FindingService/v1?${params}`)
-  if (!res.ok) throw new Error(`eBay Finding API ${res.status}`)
-
-  const data = (await res.json()) as {
-    findCompletedItemsResponse?: Array<{
-      searchResult?: Array<{
-        item?: Array<{ title: string[] }>
-      }>
-    }>
-  }
-
-  const items = data.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item ?? []
+async function fetchFromEbay(_cardKey: string, player: string, year: number, set: string): Promise<GradeCount> {
+  const listings = await searchListings(`${player} ${year} ${set} PSA`)
   const grades: Partial<Record<GradeKey, number>> = {}
   let total = 0
 
-  for (const item of items) {
-    const title = item.title?.[0] ?? ''
-    const grade = parseGradeFromTitle(title)
+  for (const listing of listings) {
+    const grade = parseGradeFromTitle(listing.title)
     if (grade !== null) {
       grades[grade] = (grades[grade] ?? 0) + 1
       total++
