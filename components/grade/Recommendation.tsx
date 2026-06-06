@@ -19,9 +19,10 @@ const CONFIG = {
 
 interface Props {
   result: GradeAnalysisRow
+  onTrack?: () => void
 }
 
-export function Recommendation({ result }: Props) {
+export function Recommendation({ result, onTrack }: Props) {
   if (!result.recommendation) return null
   const cfg = CONFIG[result.recommendation]
   const prob = result.break_even_prob ? ((result.break_even_prob) * 100).toFixed(0) : null
@@ -35,9 +36,19 @@ export function Recommendation({ result }: Props) {
       : 'Expected profit is negative at this card price and grading cost'
 
   return (
-    <div className={cn('rounded-lg border px-6 py-4 flex items-center gap-4', cfg.color)}>
-      <span className="text-lg font-bold tracking-wide">{cfg.label}</span>
-      <span className="text-sm">{rationale}</span>
+    <div className="space-y-2">
+      <div className={cn('rounded-lg border px-6 py-4 flex items-center gap-4', cfg.color)}>
+        <span className="text-lg font-bold tracking-wide">{cfg.label}</span>
+        <span className="text-sm">{rationale}</span>
+      </div>
+      {onTrack && result.recommendation !== 'skip' && (
+        <button
+          onClick={onTrack}
+          className="text-xs text-green-600 dark:text-green-400 hover:underline"
+        >
+          + Track this card in Portfolio
+        </button>
+      )}
     </div>
   )
 }

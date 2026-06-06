@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ModeToggle } from '@/components/grade/ModeToggle'
 import { EbayInput } from '@/components/grade/EbayInput'
 import { CaptureFlow } from '@/components/grade/CaptureFlow'
@@ -24,6 +25,7 @@ type Stage =
   | 'result'
 
 export default function GradePage() {
+  const router = useRouter()
   const [mode, setMode] = useState<'ebay' | 'personal'>('ebay')
   const [stage, setStage] = useState<Stage>('input')
   const [imageUrls, setImageUrls] = useState<string[]>([])
@@ -120,7 +122,17 @@ export default function GradePage() {
               New Analysis
             </button>
           </div>
-          <Recommendation result={result} />
+          <Recommendation
+              result={result}
+              onTrack={() => {
+                const params = new URLSearchParams({
+                  addFrom: 'analysis',
+                  analysisId: result.id,
+                  player: result.card_key,
+                })
+                router.push(`/portfolio?${params.toString()}`)
+              }}
+            />
           <AttributeBreakdown result={result} />
           <GradeDistributionChart distribution={result.grade_distribution} comps={result.graded_comps} />
           <EvTable result={result} />
