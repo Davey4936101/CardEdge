@@ -13,11 +13,12 @@ export interface SoldComp {
   saleDate: Date
 }
 
-function rapidApiHeaders() {
+function rapidApiHeaders(host: string) {
   const key = process.env.RAPIDAPI_KEY
   if (!key) throw new Error('RAPIDAPI_KEY env var is not set')
   return {
     'x-rapidapi-key': key,
+    'x-rapidapi-host': host,
     'Content-Type': 'application/json',
   }
 }
@@ -38,10 +39,8 @@ export async function searchListings(
   const res = await fetch(
     `https://real-time-ebay-data.p.rapidapi.com/search-products?${params}`,
     {
-      headers: {
-        ...rapidApiHeaders(),
-        'x-rapidapi-host': 'real-time-ebay-data.p.rapidapi.com',
-      },
+      cache: 'no-store',
+      headers: rapidApiHeaders('real-time-ebay-data.p.rapidapi.com'),
     }
   )
 
@@ -120,10 +119,8 @@ export async function fetchSoldComps(keywords: string): Promise<SoldComp[]> {
     'https://ebay-average-selling-price.p.rapidapi.com/findCompletedItems',
     {
       method: 'POST',
-      headers: {
-        ...rapidApiHeaders(),
-        'x-rapidapi-host': 'ebay-average-selling-price.p.rapidapi.com',
-      },
+      cache: 'no-store',
+      headers: rapidApiHeaders('ebay-average-selling-price.p.rapidapi.com'),
       body: JSON.stringify({
         keywords,
         max_search_results: '240',
