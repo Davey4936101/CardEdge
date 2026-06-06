@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ExternalLink, ShoppingCart } from 'lucide-react'
 
 export interface Alert {
   id: string
@@ -10,6 +11,7 @@ export interface Alert {
   roi_pct: number
   grade: string | null
   player: string | null
+  set_name: string | null
   listing_url: string
   image_url: string | null
   end_time: string | null
@@ -32,6 +34,21 @@ function timeAgo(dateStr: string): string {
 }
 
 export function AlertCard({ alert, onRead }: AlertCardProps) {
+  const router = useRouter()
+
+  function handleMarkPurchased(e: React.MouseEvent) {
+    e.stopPropagation()
+    const params = new URLSearchParams({
+      addFrom: 'alert',
+      alertId: alert.id,
+      player: alert.player ?? '',
+      set: alert.set_name ?? '',
+      grade: alert.grade ?? '',
+      price: alert.listed_price.toString(),
+    })
+    router.push(`/portfolio?${params.toString()}`)
+  }
+
   return (
     <div
       role="button"
@@ -72,19 +89,27 @@ export function AlertCard({ alert, onRead }: AlertCardProps) {
           ${alert.listed_price.toFixed(2)} listed
           <span className="text-slate-400"> · ${alert.fair_value.toFixed(2)} FV</span>
         </p>
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
           <span className="text-xs text-slate-400">
             {alert.watchlists?.name} · {timeAgo(alert.created_at)}
           </span>
-          <a
-            href={alert.listing_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-400 transition-colors"
-          >
-            View on eBay <ExternalLink className="size-3" />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleMarkPurchased}
+              className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-500 transition-colors"
+            >
+              <ShoppingCart className="size-3" /> Track Buy
+            </button>
+            <a
+              href={alert.listing_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-400 transition-colors"
+            >
+              View on eBay <ExternalLink className="size-3" />
+            </a>
+          </div>
         </div>
       </div>
     </div>
