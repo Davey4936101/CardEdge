@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/deals', label: 'Deals' },
+  { href: '/grade', label: 'Grade' },
   { href: '/portfolio', label: 'Portfolio' },
   { href: '/intelligence', label: 'Intelligence' },
   { href: '/performance', label: 'Performance' },
