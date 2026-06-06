@@ -63,7 +63,7 @@ export function PortfolioClient() {
   }
 
   return (
-    <div className="flex flex-col bg-slate-950" style={{ height: 'calc(100dvh - 56px)' }}>
+    <div className="flex flex-col bg-slate-950" style={{ height: 'calc(100dvh - 64px)' }}>
       <PortfolioKpiBar onAdd={() => { setPrefill(undefined); setModalOpen(true) }} />
       <div className="flex flex-1 overflow-hidden">
         <div className={`overflow-y-auto ${selectedCard ? 'flex-1' : 'w-full'}`}>

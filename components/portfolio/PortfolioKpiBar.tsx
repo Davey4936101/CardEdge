@@ -21,7 +21,7 @@ export function PortfolioKpiBar({ onAdd }: Props) {
 
   const load = useCallback(async () => {
     const res = await fetch('/api/portfolio/summary')
-    setSummary((await res.json()) as PortfolioSummary)
+    if (res.ok) setSummary((await res.json()) as PortfolioSummary)
   }, [])
 
   useEffect(() => { void load() }, [load])

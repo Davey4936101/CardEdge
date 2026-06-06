@@ -32,7 +32,6 @@ export default function GradePage() {
   const [ebayMeta, setEbayMeta] = useState<{ itemId: string; title: string; price: number | null } | null>(null)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [result, setResult] = useState<GradeAnalysisRow | null>(null)
-  const [rawPrice, setRawPrice] = useState<number>(0)
 
   function reset() {
     setStage('input')
@@ -40,11 +39,9 @@ export default function GradePage() {
     setEbayMeta(null)
     setAnalysisId(null)
     setResult(null)
-    setRawPrice(0)
   }
 
   async function startAnalysis(confirmedRawPrice: number) {
-    setRawPrice(confirmedRawPrice)
     setStage('analyzing')
 
     const res = await fetch('/api/grade/analyze', {

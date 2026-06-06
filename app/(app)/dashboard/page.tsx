@@ -10,8 +10,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void fetch('/api/portfolio/summary')
-      .then((r) => r.json())
-      .then((d) => setSummary(d as PortfolioSummary))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: PortfolioSummary | null) => { if (d) setSummary(d) })
   }, [])
 
   const portfolioValue = summary
