@@ -1,9 +1,8 @@
 import { inngest } from './client'
 import { createServerClient } from '@/lib/supabase/server'
-import { searchListings } from '@/lib/ebay/rapidapi'
-import type { EbayListing } from '@/lib/ebay/rapidapi'
-import { calculateRoiPct } from '@/lib/fair-value'
-import { resolveCompsForListing } from '@/lib/deals/comp-resolver'
+import { searchListings, fetchSoldComps } from '@/lib/ebay/rapidapi'
+import type { EbayListing, SoldComp } from '@/lib/ebay/rapidapi'
+import { calculateFairValue, calculateRoiPct } from '@/lib/fair-value'
 
 const MIN_ROI_PCT = 10
 
@@ -33,18 +32,16 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
 }
 
-// Run async tasks in batches to avoid bursting external APIs.
-async function runInBatches<T, R>(
-  items: T[],
-  batchSize: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = []
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize)
-    results.push(...await Promise.all(batch.map(fn)))
-  }
-  return results
+// IQR-trimmed mean of a price array. Returns null if fewer than 3 prices.
+function peerFairValue(prices: number[]): number | null {
+  if (prices.length < 3) return null
+  const sorted = [...prices].sort((a, b) => a - b)
+  const q1 = sorted[Math.floor(sorted.length * 0.25)]
+  const q3 = sorted[Math.floor(sorted.length * 0.75)]
+  const iqr = q3 - q1
+  const trimmed = sorted.filter((p) => p >= q1 - 1.5 * iqr && p <= q3 + 1.5 * iqr)
+  if (trimmed.length < 3) return null
+  return trimmed.reduce((a, b) => a + b, 0) / trimmed.length
 }
 
 async function scanQuery(
@@ -67,41 +64,53 @@ async function scanQuery(
 
   if (!listings.length) return 0
 
-  // Resolve card-specific sold comps in batches of 5 to avoid bursting the
-  // eBay Finding API. A "Patrick Mahomes Prizm #177 PSA 10" listing gets its
-  // own comp query rather than inheriting the broader search query comps.
-  const resolvedListings = await runInBatches(listings, 5, async (listing) => {
-    try {
-      const resolved = await resolveCompsForListing(listing, supabase, query)
-      if (!resolved || !resolved.fairValue) return null
-      const roi = calculateRoiPct(listing.price, resolved.fairValue.fairValue)
-      if (roi < MIN_ROI_PCT) return null
-      return { ...listing, cardKey: resolved.cardKey, fairValue: resolved.fairValue.fairValue, roi, lowConfidence: resolved.lowConfidence }
-    } catch (err) {
-      console.warn(`[global-scanner] comp resolution failed for "${listing.title}":`, err instanceof Error ? err.message : String(err))
-      return null
-    }
-  })
+  // Attempt ONE query-level sold-comps fetch (capped at 7 s).
+  // svcs.ebay.com can be unreachable from data-center IPs; when it is, we
+  // fall back to peer pricing derived from the active BIN listings instead.
+  let fairValue: number | null = null
+  try {
+    const comps = await Promise.race<SoldComp[]>([
+      fetchSoldComps(query),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('comp timeout')), 7_000)
+      ),
+    ])
+    const fv = calculateFairValue(comps)
+    if (fv) fairValue = fv.fairValue
+  } catch {
+    console.warn(`[global-scanner] sold comps unavailable for "${query}", using peer pricing`)
+  }
 
-  const deals = resolvedListings.filter((d): d is NonNullable<typeof resolvedListings[number]> => d !== null)
-  if (!deals.length) return 0
+  // Peer-pricing fallback: IQR-trimmed mean of active BIN prices.
+  // For liquid graded cards, active BIN prices track sold prices closely.
+  if (fairValue === null) {
+    fairValue = peerFairValue(listings.map((l) => l.price))
+  }
+
+  if (fairValue === null) {
+    console.warn(`[global-scanner] no fair value for "${query}", skipping`)
+    return 0
+  }
 
   let inserted = 0
-  for (const deal of deals) {
+  for (const listing of listings) {
+    const roi = calculateRoiPct(listing.price, fairValue)
+    if (roi < MIN_ROI_PCT) continue
+
     const { error } = await supabase.from('alerts').insert({
       watchlist_id: null,
-      ebay_item_id: deal.itemId,
-      card_title: deal.title,
-      listed_price: deal.price,
-      fair_value: Math.round(deal.fairValue * 100) / 100,
-      roi_pct: Math.round(deal.roi * 100) / 100,
+      ebay_item_id: listing.itemId,
+      card_title: listing.title,
+      listed_price: listing.price,
+      fair_value: Math.round(fairValue * 100) / 100,
+      roi_pct: Math.round(roi * 100) / 100,
       grade: null,
       player,
       set_name: null,
-      listing_url: deal.listingUrl,
-      image_url: deal.imageUrl,
-      end_time: deal.endTime ?? null,
-      buying_format: deal.buyingFormat,
+      listing_url: listing.listingUrl,
+      image_url: listing.imageUrl,
+      end_time: listing.endTime ?? null,
+      buying_format: listing.buyingFormat,
       sport,
     })
 
