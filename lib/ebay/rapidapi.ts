@@ -473,7 +473,7 @@ async function fetchSoldCompsEbay(keywords: string): Promise<SoldComp[]> {
 
   const res = await fetch(
     `https://svcs.ebay.com/services/search/FindingService/v1?${params}`,
-    { cache: 'no-store', signal: AbortSignal.timeout(10_000) }
+    { cache: 'no-store', signal: AbortSignal.timeout(5_000) }
   )
 
   if (!res.ok) {

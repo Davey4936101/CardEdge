@@ -38,14 +38,25 @@ const LOT_PATTERNS: RegExp[] = [
 
   // Wax / sealed product (not individual cards)
   /\b(wax|hobby|retail|blaster|mega|value|gravity|fat)\s+(box|pack|case)\b/i,
-  /sealed\s+(box|case)/i,
+  /sealed\s+(box|case|pack)/i,
+  /\bunopened\s+(box|pack|case)\b/i,
   /\bbooster\s+(box|pack)\b/i,
   /\bcase\s+break\b/i,
   /\bgroup\s+break\b/i,
+  /\bbreak\s+spot\b/i,
+  /\bspot\s+(?:in\s+(?:a\s+)?)?(?:a\s+)?break\b/i,
+
+  // Mystery / grab bag (never individual cards)
+  /\bmystery\s+(box|pack|lot|spot|envelope|grab)\b/i,
+  /\bgrab\s+bag\b/i,
 
   // Multi-card counts in title  e.g., "(5 cards)" or "5-card set"
   /\(\s*\d{2,}\s*cards?\s*\)/i,
   /\b[3-9]\d*[\s-]card\s+(set|bundle|collection|pack)\b/i,
+
+  // Plain "X cards" bulk counts (≥5 cards listed as a quantity)
+  /\b[5-9]\s+cards?\b/i,
+  /\b\d{2,}\s+cards?\b/i,
 
   // Explicit multi-card bundle language
   /\bbundle\s+of\s+\d+/i,

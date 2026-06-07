@@ -412,7 +412,14 @@ export function DealDetailSheet({ alert, open, onOpenChange }: DealDetailSheetPr
                 </div>
 
                 {compData.comps.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-2">No sold comps found for this query. Fair value may be unreliable.</p>
+                  <div className="py-2 space-y-1">
+                    <p className="text-xs text-slate-500">
+                      eBay sale history is not available from the server environment — the Finding API is blocked on data-center IPs.
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      Fair value was computed from peer listing prices at scan time. Check eBay&apos;s sold listings directly for manual verification.
+                    </p>
+                  </div>
                 ) : (
                   <>
                     {/* Sparkline */}

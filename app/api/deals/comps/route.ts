@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { fetchSoldComps } from '@/lib/ebay/rapidapi'
 import { calculateFairValue } from '@/lib/fair-value'
+import { createServerClient } from '@/lib/supabase/server'
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 80)
+}
 
 // GET /api/deals/comps?query=<encoded search string>
 // Returns recent sold comps and computed fair value for a given card query.
@@ -15,11 +20,48 @@ export async function GET(req: Request) {
   if (!query) return NextResponse.json({ error: 'query param required' }, { status: 400 })
 
   try {
-    const comps = await fetchSoldComps(query)
+    const supabase = createServerClient()
+    const cacheKey = `query:${slugify(query)}`
 
-    // Sort newest-first for display
+    // Check price_cache first — populated by the scanner when Finding API succeeds
+    const { data: cached } = await supabase
+      .from('price_cache')
+      .select('sale_price, sale_date')
+      .eq('card_key', cacheKey)
+      .gt('created_at', new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString())
+
+    let comps = (cached ?? []).map((r: { sale_price: number; sale_date: string }) => ({
+      price: Number(r.sale_price),
+      saleDate: new Date(r.sale_date),
+    }))
+
+    // If no cached comps, try the Finding API (may be unreachable from data-center IPs)
+    if (comps.length < 3) {
+      try {
+        const fetched = await Promise.race([
+          fetchSoldComps(query),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Finding API timeout')), 6_000)
+          ),
+        ])
+        if (fetched.length >= 3) {
+          comps = fetched
+          // Save to cache so subsequent opens are instant
+          const rows = comps.map((c) => ({
+            card_key: cacheKey,
+            sale_price: c.price,
+            sale_date: c.saleDate.toISOString(),
+            source: 'ebay',
+          }))
+          await supabase.from('price_cache').delete().eq('card_key', cacheKey)
+          await supabase.from('price_cache').insert(rows)
+        }
+      } catch {
+        // Finding API unreachable from this server environment — return empty gracefully
+      }
+    }
+
     const sorted = [...comps].sort((a, b) => b.saleDate.getTime() - a.saleDate.getTime())
-
     const fvResult = calculateFairValue(comps)
 
     return NextResponse.json({
