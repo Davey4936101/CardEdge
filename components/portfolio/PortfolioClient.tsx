@@ -71,6 +71,7 @@ export function PortfolioClient() {
             cards={cards}
             selectedId={selectedId}
             onSelect={(id) => setSelectedId(selectedId === id ? null : id)}
+            onAdd={() => { setPrefill(undefined); setModalOpen(true) }}
           />
         </div>
         {selectedCard && (

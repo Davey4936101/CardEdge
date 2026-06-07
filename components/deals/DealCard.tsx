@@ -141,7 +141,7 @@ export function DealCard({ alert, onSelect, onRead }: DealCardProps) {
               </span>
             )}
             <span className="text-[10px] text-slate-600">
-              Score {score.toFixed(0)} · {timeAgo(alert.created_at)}
+              {isFinite(score) ? `Score ${score.toFixed(0)} · ` : ''}{timeAgo(alert.created_at)}
             </span>
           </div>
         </div>

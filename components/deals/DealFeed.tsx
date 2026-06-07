@@ -39,7 +39,6 @@ export function DealFeed() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [watchlistOpen, setWatchlistOpen] = useState(false)
   const [scanState, setScanState] = useState<ScanState>('idle')
-  const [lastScanCount, setLastScanCount] = useState<number | null>(null)
   const autoScanFired = useRef(false)
 
   const load = useCallback(async () => {
@@ -63,11 +62,9 @@ export function DealFeed() {
       if (res.status === 429) {
         // Rate limited — don't mark as error, just show what we have
         setScanState('done')
-        setLastScanCount(0)
       } else if (!res.ok) {
         throw new Error(json.error ?? 'Scan failed')
       } else {
-        setLastScanCount(json.newDeals ?? 0)
         setScanState('done')
       }
       await load()
@@ -126,21 +123,24 @@ export function DealFeed() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Deal Discovery</h1>
-          {!loading && !isScanning && (
-            <p className="text-sm text-slate-500 mt-0.5">
-              {sorted.length > 0
-                ? `${sorted.length} deal${sorted.length !== 1 ? 's' : ''} found`
-                : scanState === 'done'
-                ? lastScanCount === 0
-                  ? 'No deals above threshold right now — try again later'
-                  : `Scan complete · ${alerts.length} deal${alerts.length !== 1 ? 's' : ''} found`
-                : 'Loading…'}
-              {sorted.length > 0 && filtered.length !== alerts.length && ` (${alerts.length} total)`}
-            </p>
-          )}
           {isScanning && (
             <p className="text-sm text-indigo-400 mt-0.5 animate-pulse">
               Scanning eBay for deals…
+            </p>
+          )}
+          {!loading && !isScanning && sorted.length > 0 && filtered.length === alerts.length && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {sorted.length} deal{sorted.length !== 1 ? 's' : ''} found
+            </p>
+          )}
+          {!loading && !isScanning && sorted.length > 0 && filtered.length !== alerts.length && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {sorted.length} of {alerts.length} deals match filters
+            </p>
+          )}
+          {!loading && !isScanning && sorted.length === 0 && scanState === 'done' && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              No deals above threshold — refresh to check again
             </p>
           )}
         </div>

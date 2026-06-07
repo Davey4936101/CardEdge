@@ -1,0 +1,106 @@
+<h2>Deal Discovery — Layout Options</h2>
+<p class="subtitle">Which page structure feels right? Pick one to continue.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-family:sans-serif;font-size:11px;color:#334155;background:#f8fafc;border-radius:8px;padding:10px;line-height:1.4">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong style="font-size:13px">Deal Discovery</strong>
+          <span style="font-size:10px;background:#6366f1;color:#fff;border-radius:4px;padding:2px 8px">+ Watchlists</span>
+        </div>
+        <!-- filter bar -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Player</span>
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Year</span>
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Rookies only</span>
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Graded only</span>
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Price $0–$500</span>
+          <span style="background:#e2e8f0;border-radius:12px;padding:2px 8px;font-size:10px">Sort: Deal Score ▾</span>
+        </div>
+        <!-- deal cards -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px;align-items:center">
+            <div style="background:#22c55e20;border:1px solid #22c55e50;border-radius:5px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#16a34a;font-size:11px;flex-shrink:0">+34%</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:10px;line-height:1.2">2020 Prizm Justin Herbert RC PSA 10</div>
+              <div style="color:#64748b;font-size:9px;margin-top:1px">$148 listed · $198 FV · Ends in 2h</div>
+            </div>
+            <div style="background:#6366f1;color:#fff;border-radius:4px;padding:2px 7px;font-size:9px;flex-shrink:0">Buy</div>
+          </div>
+          <div style="display:flex;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px;align-items:center">
+            <div style="background:#f59e0b20;border:1px solid #f59e0b50;border-radius:5px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#d97706;font-size:11px;flex-shrink:0">+19%</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:10px;line-height:1.2">2018 Prizm Luka Doncic RC Raw</div>
+              <div style="color:#64748b;font-size:9px;margin-top:1px">$312 listed · $372 FV</div>
+            </div>
+            <div style="background:#6366f1;color:#fff;border-radius:4px;padding:2px 7px;font-size:9px;flex-shrink:0">Buy</div>
+          </div>
+          <div style="display:flex;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px;align-items:center">
+            <div style="background:#22c55e20;border:1px solid #22c55e50;border-radius:5px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#16a34a;font-size:11px;flex-shrink:0">+27%</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:10px;line-height:1.2">2023 Topps Chrome Jaime Jaquez RC</div>
+              <div style="color:#64748b;font-size:9px;margin-top:1px">$22 listed · $28 FV · Ends in 45m</div>
+            </div>
+            <div style="background:#6366f1;color:#fff;border-radius:4px;padding:2px 7px;font-size:9px;flex-shrink:0">Buy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Full-Width Feed + Top Filter Bar</h3>
+      <p>Chip-style filters sit above a single-column deal feed. Watchlists accessible via a header button that opens a Sheet drawer. Clean and familiar — same pattern as current page but inverted priority.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-family:sans-serif;font-size:11px;color:#334155;background:#f8fafc;border-radius:8px;padding:10px;line-height:1.4">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong style="font-size:13px">Deal Discovery</strong>
+          <span style="font-size:10px;background:#6366f1;color:#fff;border-radius:4px;padding:2px 8px">+ Watchlists</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <!-- sidebar filters -->
+          <div style="width:110px;flex-shrink:0;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;font-size:9px">
+            <div style="font-weight:600;margin-bottom:6px;font-size:10px">Filters</div>
+            <div style="margin-bottom:5px"><div style="color:#64748b;margin-bottom:2px">Player</div><div style="border:1px solid #e2e8f0;border-radius:4px;padding:2px 5px;background:#f8fafc">Any player...</div></div>
+            <div style="margin-bottom:5px"><div style="color:#64748b;margin-bottom:2px">Year</div><div style="border:1px solid #e2e8f0;border-radius:4px;padding:2px 5px;background:#f8fafc">Any</div></div>
+            <div style="margin-bottom:5px;display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border:1px solid #e2e8f0;border-radius:2px;background:#6366f1"></div><span>Rookies only</span></div>
+            <div style="margin-bottom:5px;display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border:1px solid #e2e8f0;border-radius:2px"></div><span>Graded only</span></div>
+            <div style="margin-bottom:5px"><div style="color:#64748b;margin-bottom:2px">Price</div><div style="border:1px solid #e2e8f0;border-radius:4px;padding:2px 5px;background:#f8fafc">$0 – $500</div></div>
+            <div><div style="color:#64748b;margin-bottom:2px">Min ROI %</div><div style="border:1px solid #e2e8f0;border-radius:4px;padding:2px 5px;background:#f8fafc">10%</div></div>
+          </div>
+          <!-- main feed -->
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:6px;align-items:center">
+              <div style="background:#22c55e20;border:1px solid #22c55e50;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#16a34a;font-size:10px;flex-shrink:0">+34%</div>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:9px">2020 Prizm Herbert RC PSA 10</div><div style="color:#64748b;font-size:8px">$148 · $198 FV · 2h left</div></div>
+              <div style="background:#6366f1;color:#fff;border-radius:3px;padding:2px 5px;font-size:8px">Buy</div>
+            </div>
+            <div style="display:flex;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:6px;align-items:center">
+              <div style="background:#f59e0b20;border:1px solid #f59e0b50;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#d97706;font-size:10px;flex-shrink:0">+19%</div>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:9px">2018 Prizm Luka Doncic RC Raw</div><div style="color:#64748b;font-size:8px">$312 · $372 FV</div></div>
+              <div style="background:#6366f1;color:#fff;border-radius:3px;padding:2px 5px;font-size:8px">Buy</div>
+            </div>
+            <div style="display:flex;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:6px;align-items:center">
+              <div style="background:#22c55e20;border:1px solid #22c55e50;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#16a34a;font-size:10px;flex-shrink:0">+27%</div>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:9px">2023 Topps Chrome Jaquez RC</div><div style="color:#64748b;font-size:8px">$22 · $28 FV · 45m left</div></div>
+              <div style="background:#6366f1;color:#fff;border-radius:3px;padding:2px 5px;font-size:8px">Buy</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Sidebar Filters + Main Feed</h3>
+      <p>Persistent left sidebar with all filter controls (player text search, year dropdown, checkboxes for rookie/graded, price range slider, min ROI). Main area shows the deal feed. More desktop-friendly but takes more horizontal space.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:16px">
+  <p class="subtitle" style="font-size:13px">Either way: the feed shows deals immediately without needing a watchlist. Watchlists become a "+Watchlists" button that opens the existing Sheet drawer for alert setup. Both designs keep the ROI badge, Buy button, and countdown timer.</p>
+</div>

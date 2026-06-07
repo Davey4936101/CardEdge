@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
     void fetch('/api/alerts')
       .then((r) => (r.ok ? r.json() : []))
-      .then((d: Alert[]) => setAlerts(Array.isArray(d) ? d.slice(0, 5) : []))
+      .then((d: Alert[]) => setAlerts(Array.isArray(d) ? d : []))
   }, [])
 
   const portfolioValue = summary
@@ -29,6 +29,16 @@ export default function DashboardPage() {
 
   const totalRoi = summary
     ? `${summary.unrealizedPnlPct >= 0 ? '+' : ''}${summary.unrealizedPnlPct.toFixed(2)}%`
+    : '…'
+
+  const avgDealRoi = alerts && alerts.length > 0
+    ? alerts.reduce((s, a) => s + a.roi_pct, 0) / alerts.length
+    : null
+
+  const globalCount = alerts ? alerts.filter(a => a.watchlist_id === null).length : null
+  const watchlistCount = alerts ? alerts.filter(a => a.watchlist_id !== null).length : null
+  const alertCountDisplay = alerts !== null
+    ? `${globalCount} global · ${watchlistCount} watchlist`
     : '…'
 
   return (
@@ -51,9 +61,9 @@ export default function DashboardPage() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <KpiCard title="Portfolio Value" value={portfolioValue} />
-        <KpiCard title="Active Deal Alerts" value={summary ? summary.activeAlertCount.toString() : '…'} />
-        <KpiCard title="Positions" value={summary ? summary.positionCount.toString() : '…'} />
+        <KpiCard title="Active Deal Alerts" value={alertCountDisplay} />
         <KpiCard title="Unrealized ROI" value={totalRoi} />
+        <KpiCard title="Avg Deal ROI" value={avgDealRoi !== null ? `+${avgDealRoi.toFixed(1)}%` : '…'} />
       </div>
 
       {/* Two-column feeds */}
@@ -70,13 +80,20 @@ export default function DashboardPage() {
           {alerts === null ? (
             <p className="text-sm text-slate-400 py-4">Loading…</p>
           ) : alerts.length === 0 ? (
-            <EmptyFeed
-              title="No deal alerts yet"
-              message="Set up a watchlist in Deals to start receiving alerts."
-            />
+            <>
+              <EmptyFeed
+                title="No deals scanned yet"
+                message="Visit Deals to run a scan."
+              />
+              <div className="mt-2 text-center">
+                <Link href="/deals" className="text-xs font-semibold text-indigo-500 hover:text-indigo-400 border border-indigo-500/30 px-3 py-1.5 rounded-lg transition-colors">
+                  Go to Deals →
+                </Link>
+              </div>
+            </>
           ) : (
             <div className="space-y-2">
-              {alerts.map((alert) => (
+              {alerts.slice(0, 5).map((alert) => (
                 <div
                   key={alert.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${

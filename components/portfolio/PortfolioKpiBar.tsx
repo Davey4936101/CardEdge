@@ -50,12 +50,19 @@ export function PortfolioKpiBar({ onAdd }: Props) {
           />
         )}
       </div>
-      <button
-        onClick={onAdd}
-        className="flex-shrink-0 text-xs font-mono font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 px-3 py-1.5 rounded transition-colors"
-      >
-        + ADD POSITION
-      </button>
+      <div className="flex-shrink-0 flex items-center gap-3">
+        {summary !== null && (
+          <span className="text-xs font-mono text-slate-500">
+            {summary.positionCount} card{summary.positionCount !== 1 ? 's' : ''} tracked
+          </span>
+        )}
+        <button
+          onClick={onAdd}
+          className="text-xs font-mono font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 px-3 py-1.5 rounded transition-colors"
+        >
+          + ADD POSITION
+        </button>
+      </div>
     </div>
   )
 }

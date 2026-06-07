@@ -1,0 +1,4 @@
+{"type":"server-started","port":65205,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:65205","screen_dir":"/Users/daviddaniel/Documents/GitHub/CardEdge/.superpowers/brainstorm/46278-1780787764/content","state_dir":"/Users/daviddaniel/Documents/GitHub/CardEdge/.superpowers/brainstorm/46278-1780787764/state"}
+{"type":"screen-added","file":"/Users/daviddaniel/Documents/GitHub/CardEdge/.superpowers/brainstorm/46278-1780787764/content/layout-options.html"}
+{"type":"screen-added","file":"/Users/daviddaniel/Documents/GitHub/CardEdge/.superpowers/brainstorm/46278-1780787764/content/sidebar-with-images.html"}
+{"type":"server-stopped","reason":"idle timeout"}

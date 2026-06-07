@@ -14,9 +14,6 @@ const navLinks = [
   { href: '/deals', label: 'Deals' },
   { href: '/grade', label: 'Grade' },
   { href: '/portfolio', label: 'Portfolio' },
-]
-
-const comingSoonLinks = [
   { href: '/intelligence', label: 'Intelligence' },
   { href: '/performance', label: 'Performance' },
 ]
@@ -46,15 +43,6 @@ export function AppNav() {
               >
                 {link.label}
               </Link>
-            ))}
-            {comingSoonLinks.map((link) => (
-              <span
-                key={link.href}
-                title="Coming soon"
-                className="text-sm font-medium text-slate-300 dark:text-slate-700 cursor-default select-none"
-              >
-                {link.label}
-              </span>
             ))}
           </nav>
         </div>
@@ -100,17 +88,6 @@ export function AppNav() {
                   >
                     {link.label}
                   </SheetClose>
-                ))}
-                {comingSoonLinks.map((link) => (
-                  <span
-                    key={link.href}
-                    className="px-3 py-2 rounded-md text-sm font-medium text-slate-300 dark:text-slate-700 flex items-center justify-between"
-                  >
-                    {link.label}
-                    <span className="text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
-                      soon
-                    </span>
-                  </span>
                 ))}
               </nav>
             </SheetContent>

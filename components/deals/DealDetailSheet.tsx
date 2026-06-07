@@ -184,7 +184,7 @@ export function DealDetailSheet({ alert, open, onOpenChange }: DealDetailSheetPr
             />
             <MetricRow
               label="Est. Net ROI"
-              value={`~${(discountPct - 15).toFixed(1)}%`}
+              value={discountPct - 15 <= 0 ? '~0% after fees' : `~${(discountPct - 15).toFixed(1)}%`}
               sub="After ~13% eBay fees + ~2% shipping"
             />
           </div>

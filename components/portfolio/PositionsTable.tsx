@@ -24,9 +24,10 @@ interface Props {
   cards: PortfolioCard[]
   selectedId: string | null
   onSelect: (id: string) => void
+  onAdd?: () => void
 }
 
-export function PositionsTable({ cards, selectedId, onSelect }: Props) {
+export function PositionsTable({ cards, selectedId, onSelect, onAdd }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('status')
   const [sortAsc, setSortAsc] = useState(true)
 
@@ -49,9 +50,25 @@ export function PositionsTable({ cards, selectedId, onSelect }: Props) {
 
   if (cards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <p className="text-sm font-mono text-slate-500">NO POSITIONS</p>
-        <p className="text-xs font-mono text-slate-600 mt-1">Click + ADD POSITION to get started.</p>
+      <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+        <svg className="size-10 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M9 21V9" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-slate-400">No positions yet</p>
+          <p className="text-xs text-slate-600 mt-1 max-w-[240px] mx-auto leading-relaxed">
+            Add your first card to start tracking ROI and grading opportunities.
+          </p>
+        </div>
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            className="text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 px-4 py-2 rounded transition-colors font-mono"
+          >
+            + ADD CARD
+          </button>
+        )}
       </div>
     )
   }

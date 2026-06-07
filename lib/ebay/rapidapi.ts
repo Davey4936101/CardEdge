@@ -210,6 +210,12 @@ function rapidApiHeaders(host: string) {
   }
 }
 
+function parseEbayDate(raw: string): Date {
+  // Try ISO first, then fall back to Date constructor (handles "Jun 6, 2026" etc.)
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? new Date() : d
+}
+
 export async function fetchSoldComps(keywords: string): Promise<SoldComp[]> {
   const res = await fetch(
     'https://ebay-average-selling-price.p.rapidapi.com/findCompletedItems',
@@ -247,8 +253,8 @@ export async function fetchSoldComps(keywords: string): Promise<SoldComp[]> {
       const rawPrice = p.sale_price ?? p.sold_price ?? p.price
       const price = parseFloat(String(rawPrice ?? '0'))
       const rawDate = p.date_sold ?? p.end_date ?? p.sold_date ?? ''
-      const saleDate = new Date(rawDate)
-      if (price <= 0 || isNaN(saleDate.getTime())) return null
+      const saleDate = parseEbayDate(rawDate)
+      if (price <= 0) return null
       return { price, saleDate }
     })
     .filter((c): c is SoldComp => c !== null)
