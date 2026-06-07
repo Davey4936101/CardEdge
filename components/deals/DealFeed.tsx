@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BookmarkPlus, RefreshCw, Zap, Gavel } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -44,18 +44,22 @@ export function DealFeed() {
   const [watchlistOpen, setWatchlistOpen] = useState(false)
   const [scanState, setScanState] = useState<ScanState>('idle')
 
+  const hasAutoScanned = useRef(false)
+
   const getAuthHeader = useCallback(async (): Promise<Record<string, string>> => {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
     return token ? { Authorization: `Bearer ${token}` } : {}
   }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<Alert[]> => {
     const auth = await getAuthHeader()
     const res = await fetch('/api/alerts', { headers: auth })
     const data = (await res.json()) as Alert[]
-    setAlerts(Array.isArray(data) ? data : [])
+    const list = Array.isArray(data) ? data : []
+    setAlerts(list)
     setLoading(false)
+    return list
   }, [getAuthHeader])
 
   // Trigger the on-demand scan endpoint. `full` scans all 13 queries;
@@ -85,7 +89,14 @@ export function DealFeed() {
   }, [load])
 
   useEffect(() => {
-    void load()
+    void load().then((list) => {
+      // Auto-trigger a quick scan on first mount if the feed is empty so users
+      // don't land on a blank page and have to manually click "Scan now".
+      if (list.length === 0 && !hasAutoScanned.current) {
+        hasAutoScanned.current = true
+        void triggerScan(false)
+      }
+    })
     const channel = supabase
       .channel('deals-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alerts' }, () => {
@@ -93,7 +104,7 @@ export function DealFeed() {
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [load])
+  }, [load, triggerScan])
 
 
   // Reset pagination when filters or sort change

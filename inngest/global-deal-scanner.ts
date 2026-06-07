@@ -33,6 +33,20 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
 }
 
+// Run async tasks in batches to avoid bursting external APIs.
+async function runInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = []
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize)
+    results.push(...await Promise.all(batch.map(fn)))
+  }
+  return results
+}
+
 async function scanQuery(
   supabase: ReturnType<typeof createServerClient>,
   query: string,
@@ -53,24 +67,21 @@ async function scanQuery(
 
   if (!listings.length) return 0
 
-  // Resolve card-specific sold comps for each listing independently so that
-  // a "Patrick Mahomes Prizm #177 PSA 10" listing doesn't inherit comps from
-  // the broader "Patrick Mahomes rookie card PSA" query (which would blend in
-  // Herbert, Allen, etc.).
-  const resolvedListings = await Promise.all(
-    listings.map(async (listing) => {
-      try {
-        const resolved = await resolveCompsForListing(listing, supabase, query)
-        if (!resolved || !resolved.fairValue) return null
-        const roi = calculateRoiPct(listing.price, resolved.fairValue.fairValue)
-        if (roi < MIN_ROI_PCT) return null
-        return { ...listing, cardKey: resolved.cardKey, fairValue: resolved.fairValue.fairValue, roi, lowConfidence: resolved.lowConfidence }
-      } catch (err) {
-        console.warn(`[global-scanner] comp resolution failed for "${listing.title}":`, err instanceof Error ? err.message : String(err))
-        return null
-      }
-    })
-  )
+  // Resolve card-specific sold comps in batches of 5 to avoid bursting the
+  // eBay Finding API. A "Patrick Mahomes Prizm #177 PSA 10" listing gets its
+  // own comp query rather than inheriting the broader search query comps.
+  const resolvedListings = await runInBatches(listings, 5, async (listing) => {
+    try {
+      const resolved = await resolveCompsForListing(listing, supabase, query)
+      if (!resolved || !resolved.fairValue) return null
+      const roi = calculateRoiPct(listing.price, resolved.fairValue.fairValue)
+      if (roi < MIN_ROI_PCT) return null
+      return { ...listing, cardKey: resolved.cardKey, fairValue: resolved.fairValue.fairValue, roi, lowConfidence: resolved.lowConfidence }
+    } catch (err) {
+      console.warn(`[global-scanner] comp resolution failed for "${listing.title}":`, err instanceof Error ? err.message : String(err))
+      return null
+    }
+  })
 
   const deals = resolvedListings.filter((d): d is NonNullable<typeof resolvedListings[number]> => d !== null)
   if (!deals.length) return 0
@@ -95,7 +106,7 @@ async function scanQuery(
     })
 
     if (error && error.code === '23505') continue // duplicate eBay item
-    if (error) throw new Error(`Insert failed: ${error.message}`)
+    if (error) throw new Error(`Insert failed [${error.code}]: ${error.message} — details: ${error.details ?? 'none'} hint: ${error.hint ?? 'none'}`)
     inserted++
   }
   return inserted
@@ -130,21 +141,24 @@ export const globalDealScanner = inngest.createFunction(
 )
 
 // Exported for use by the on-demand scan API route.
-// Clears stale global alerts first so only fresh BIN-only data is shown,
-// then runs queries sequentially to avoid bursting the sold comps rate limit.
+// Runs queries sequentially (600ms apart) then prunes alerts older than 2 hours.
+// Pruning AFTER scanning means a failed or empty scan never wipes the feed.
 export async function runQuickScan(
   supabase: ReturnType<typeof createServerClient>,
   querySlice: ReadonlyArray<{ query: string; player: string | null; sport: string }> = GLOBAL_SCAN_QUERIES.slice(0, 3)
 ): Promise<number> {
-  // Wipe existing global alerts — they may contain auction listings from
-  // before the BIN-only filter was added, and stale data is misleading.
-  await supabase.from('alerts').delete().is('watchlist_id', null)
-
   let total = 0
   for (const { query, player, sport } of querySlice) {
     total += await scanQuery(supabase, query, player, sport)
     // 600ms between queries keeps sold comps API under its per-second limit
     await new Promise((r) => setTimeout(r, 600))
   }
+
+  // Prune global alerts older than 2 hours so stale deals don't accumulate.
+  // New inserts for the same ebay_item_id are silently skipped (unique constraint),
+  // so recently-seen deals keep their original timestamp and are cleaned up here.
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  await supabase.from('alerts').delete().is('watchlist_id', null).lt('created_at', twoHoursAgo)
+
   return total
 }
