@@ -514,63 +514,8 @@ async function fetchSoldCompsEbay(keywords: string): Promise<SoldComp[]> {
   return removeOutliers(comps)
 }
 
-// RapidAPI fallback — kept as a safety net while transitioning
-async function fetchSoldCompsRapidApi(keywords: string): Promise<SoldComp[]> {
-  const key = process.env.RAPIDAPI_KEY
-  if (!key) throw new Error('RAPIDAPI_KEY not set')
-
-  const res = await fetch(
-    'https://ebay-average-selling-price.p.rapidapi.com/findCompletedItems',
-    {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'x-rapidapi-key': key,
-        'x-rapidapi-host': 'ebay-average-selling-price.p.rapidapi.com',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        keywords,
-        max_search_results: 240,
-        category_id: '212',
-        remove_outliers: true,
-      }),
-    }
-  )
-
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`RapidAPI sold comps ${res.status}: ${text}`)
-  }
-
-  type RawProduct = { sale_price?: number | string; date_sold?: string }
-  const data = (await res.json()) as { products?: RawProduct[] }
-
-  return (data.products ?? [])
-    .map((p): SoldComp | null => {
-      const price = parseFloat(String(p.sale_price ?? '0'))
-      const saleDate = parseEbayDate(p.date_sold ?? '')
-      if (price <= 0) return null
-      return { price, saleDate }
-    })
-    .filter((c): c is SoldComp => c !== null)
-}
-
 export async function fetchSoldComps(keywords: string): Promise<SoldComp[]> {
-  // 1. eBay Finding API (free, official — preferred when developer creds are set)
-  const clientId = process.env.EBAY_CLIENT_ID
-  const hasEbayCreds = clientId && clientId !== 'your-client-id'
-  if (hasEbayCreds) {
-    try {
-      const comps = await fetchSoldCompsEbay(keywords)
-      if (comps.length > 0) return comps
-    } catch (err) {
-      console.warn('[eBay Finding API] Failed:', err instanceof Error ? err.message : String(err))
-    }
-  }
-
-  // 2. RapidAPI fallback (requires RAPIDAPI_KEY)
-  return fetchSoldCompsRapidApi(keywords)
+  return fetchSoldCompsEbay(keywords)
 }
 
 // ── Single auction item lookup (for Bid Watch feature) ────────────────────────
