@@ -20,6 +20,7 @@ export async function measureCentering(imageUrl: string): Promise<CenteringResul
     const cvRes = await fetch(`${CV_SERVICE_URL}/centering`, {
       method: 'POST',
       body: form,
+      signal: AbortSignal.timeout(10_000),
     })
 
     if (!cvRes.ok) {

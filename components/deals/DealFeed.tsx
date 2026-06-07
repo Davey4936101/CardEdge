@@ -100,7 +100,8 @@ export function DealFeed() {
   useEffect(() => { setPage(1) }, [filters, sortKey])
 
   async function handleRead(id: string) {
-    await fetch(`/api/alerts/${id}`, { method: 'PATCH' })
+    const auth = await getAuthHeader()
+    await fetch(`/api/alerts/${id}`, { method: 'PATCH', headers: auth })
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, is_read: true } : a)))
   }
 
@@ -256,7 +257,7 @@ export function DealFeed() {
                 <>
                   <p className="text-sm font-medium text-slate-500">Scan failed</p>
                   <p className="text-xs text-slate-600">
-                    Could not reach eBay. Check that RAPIDAPI_KEY is set and try again.
+                    Could not reach eBay. Check that EBAY_CLIENT_ID and EBAY_CLIENT_SECRET are set and try again.
                   </p>
                   <Button size="sm" variant="outline" onClick={() => void triggerScan(false)}>
                     Retry

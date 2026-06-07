@@ -5,6 +5,7 @@ import { X, ExternalLink } from 'lucide-react'
 import type { PortfolioCard } from '@/lib/portfolio/types'
 import { resolveCurrentValue, unrealizedPnl } from '@/lib/portfolio/pnl'
 import { computeSellSignal } from '@/lib/portfolio/sell-signal'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { PriceSparkline } from './PriceSparkline'
 import { LifecycleTimeline } from './LifecycleTimeline'
 import { GradeLadder } from './GradeLadder'
@@ -32,7 +33,7 @@ export function DetailPanel({ card, onUpdate, onDelete, onClose }: Props) {
   }, [card.id, card.current_value_override, card.notes])
 
   useEffect(() => {
-    void fetch(`/api/portfolio/${card.id}/price-history`)
+    void fetchWithAuth(`/api/portfolio/${card.id}/price-history`)
       .then((r) => r.json())
       .then((d: unknown) => setHistory(Array.isArray(d) ? (d as PricePoint[]) : []))
   }, [card.id, card.card_key])
@@ -41,7 +42,7 @@ export function DetailPanel({ card, onUpdate, onDelete, onClose }: Props) {
   const value = resolveCurrentValue(card)
 
   async function patch(body: Record<string, unknown>) {
-    const res = await fetch(`/api/portfolio/${card.id}`, {
+    const res = await fetchWithAuth(`/api/portfolio/${card.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })

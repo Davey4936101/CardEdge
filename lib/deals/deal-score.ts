@@ -162,7 +162,7 @@ export function recommendedAction(alert: Alert): {
     return {
       label: 'Watch',
       color: 'text-amber-400',
-      reason: `Decent discount but thin margin after fees (~${(roi - 15).toFixed(0)}% net after ~15% fees). Monitor for price drop or set a watchlist alert.`,
+      reason: `${roi.toFixed(0)}% discount is close to the ~15% fee threshold. Monitor for price drop or set a watchlist alert before committing.`,
     }
   }
   return {

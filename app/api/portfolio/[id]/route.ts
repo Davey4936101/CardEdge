@@ -40,7 +40,10 @@ export async function PATCH(
       updates.submitted_at = body.submitted_at ?? new Date().toISOString().slice(0, 10)
     }
     if (next === 'graded_owned') {
-      const gradeNum = body.received_grade as number
+      const gradeNum = Number(body.received_grade)
+      if (!Number.isInteger(gradeNum) || gradeNum < 1 || gradeNum > 10) {
+        return NextResponse.json({ error: 'received_grade must be an integer 1–10' }, { status: 422 })
+      }
       const gradeLabel = `PSA ${gradeNum}`
       updates.received_grade = gradeNum
       updates.received_at = body.received_at ?? new Date().toISOString().slice(0, 10)

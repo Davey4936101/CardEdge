@@ -37,8 +37,7 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
     // Step 2: Card identification
     let identity: CardIdentity | null = null
     if (input.ebayListingTitle) {
-      const { identifyCardFromTitle: idFromTitle } = await import('./card-identify')
-      identity = await idFromTitle(input.ebayListingTitle)
+      identity = await identifyCardFromTitle(input.ebayListingTitle)
     }
     if (!identity && input.imageUrls[0]) {
       identity = await identifyCardFromImage(input.imageUrls[0])
