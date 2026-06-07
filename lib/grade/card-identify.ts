@@ -5,6 +5,27 @@ import { toAnthropicImageSource } from './image-source'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// Manufacturer/brand names to strip when building the set label
+const MANUFACTURER_WORDS = new Set([
+  'Panini', 'Topps', 'Bowman', 'Fleer', 'Upper', 'Deck', 'Donruss', 'Score',
+])
+
+// All words that appear capitalised in titles but are NOT part of a player name.
+// Used to skip false-positive Firstname-Lastname matches (e.g. "Panini Prizm").
+const NON_PLAYER_WORDS = new Set([
+  ...MANUFACTURER_WORDS,
+  // Set lines / product names
+  'Prizm', 'Chrome', 'Optic', 'Select', 'Mosaic', 'National', 'Treasures',
+  'Absolute', 'Contenders', 'Spectra', 'Certified', 'Crown', 'Royale',
+  'Immaculate', 'Playoff', 'Stadium', 'Club', 'Finest', 'Heritage',
+  'Flawless', 'Origins', 'Chronicles', 'Illusions', 'Flux', 'Luminance',
+  'Elements', 'Draft', 'Prospects', 'Ginter', 'Refractor', 'Parallel',
+  'Holo', 'Graded', 'Auto',
+  // Colors (parallels)
+  'Silver', 'Gold', 'Blue', 'Red', 'Black', 'White', 'Green', 'Purple',
+  'Orange', 'Pink', 'Yellow', 'Aqua', 'Teal',
+])
+
 function buildCardKey(player: string, year: number, set: string, cardNumber: string): string {
   return [player, String(year), set, cardNumber]
     .map((s) =>
@@ -28,18 +49,54 @@ export async function identifyCardFromTitle(title: string): Promise<CardIdentity
   const year = parseInt(yearMatch[0], 10)
   const cardNumber = cardNumMatch[1]
 
-  // Extract player — heuristic: words after year that look like a name
   const afterYear = title.slice(title.indexOf(yearMatch[0]) + yearMatch[0].length).trim()
-  // Remove set/brand words and extract player name
-  const playerMatch = afterYear.match(/([A-Z][a-z]+ [A-Z][a-z]+)/)
-  const player = playerMatch ? playerMatch[1] : 'Unknown'
 
-  // Extract set — words between year and player
-  const beforePlayer = afterYear.slice(0, playerMatch ? afterYear.indexOf(playerMatch[0]) : afterYear.length).trim()
-  const set = beforePlayer.replace(/\s+/g, ' ').trim() || 'Unknown'
+  // Scan word-by-word so overlapping pairs ("Silver Patrick Mahomes") don't
+  // consume "Patrick" before "Patrick Mahomes" is tested.
+  const words = afterYear.split(/\s+/)
+  let playerIdx = -1
+  for (let i = 0; i < words.length - 1; i++) {
+    const w1 = words[i], w2 = words[i + 1]
+    if (
+      /^[A-Z][a-z]+$/.test(w1) && /^[A-Z][a-z]+$/.test(w2) &&
+      !NON_PLAYER_WORDS.has(w1) && !NON_PLAYER_WORDS.has(w2)
+    ) {
+      playerIdx = i
+      break
+    }
+  }
+  const player = playerIdx >= 0 ? `${words[playerIdx]} ${words[playerIdx + 1]}` : 'Unknown'
+
+  // Set: words before the player pair, manufacturer brands stripped out
+  const set = (playerIdx > 0 ? words.slice(0, playerIdx) : [])
+    .filter((w) => !MANUFACTURER_WORDS.has(w))
+    .join(' ')
+    .trim() || 'Unknown'
 
   const cardKey = buildCardKey(player, year, set, cardNumber)
-  return { player, year, set, cardNumber, cardKey }
+  const identity: CardIdentity = { player, year, set, cardNumber, cardKey }
+
+  const gradeMatch = title.match(/\b(PSA|BGS|SGC)\s+(\d+(?:\.\d+)?)\b/i)
+  if (gradeMatch) {
+    identity.grade = {
+      grader: gradeMatch[1].toUpperCase() as 'PSA' | 'BGS' | 'SGC',
+      score: parseFloat(gradeMatch[2]),
+    }
+  }
+
+  return identity
+}
+
+// Returns 0–1 reflecting how many fields were confidently extracted.
+// Weights: year=0.25, player=0.35, cardNumber=0.20, set=0.20.
+// Threshold for "trustworthy" comp query: ≥ 0.6.
+export function confidenceScore(identity: CardIdentity | null): number {
+  if (!identity) return 0
+  let score = 0.25 // year always present for a non-null identity
+  if (identity.player !== 'Unknown') score += 0.35
+  if (identity.cardNumber) score += 0.20
+  if (identity.set !== 'Unknown') score += 0.20
+  return score
 }
 
 export async function identifyCardFromImage(imageUrl: string): Promise<CardIdentity | null> {

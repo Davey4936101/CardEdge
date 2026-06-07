@@ -1,7 +1,9 @@
 import { inngest } from './client'
 import { createServerClient } from '@/lib/supabase/server'
-import { searchListings, fetchSoldComps } from '@/lib/ebay/rapidapi'
-import { calculateFairValue, calculateRoiPct } from '@/lib/fair-value'
+import { searchListings } from '@/lib/ebay/rapidapi'
+import type { EbayListing } from '@/lib/ebay/rapidapi'
+import { calculateRoiPct } from '@/lib/fair-value'
+import { resolveCompsForListing } from '@/lib/deals/comp-resolver'
 
 const MIN_ROI_PCT = 10
 
@@ -37,12 +39,9 @@ async function scanQuery(
   player: string | null,
   sport: string
 ): Promise<number> {
-  let listings, comps
+  let listings: EbayListing[]
   try {
-    ;[listings, comps] = await Promise.all([
-      searchListings(query),
-      fetchSoldComps(query),
-    ])
+    listings = await searchListings(query)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     if (msg.includes('429') || msg.toLowerCase().includes('too many')) {
@@ -52,30 +51,46 @@ async function scanQuery(
     throw err
   }
 
-  if (listings.length === 0 || comps.length < 3) return 0
+  if (!listings.length) return 0
 
-  const fv = calculateFairValue(comps)
-  if (!fv) return 0
+  // Resolve card-specific sold comps for each listing independently so that
+  // a "Patrick Mahomes Prizm #177 PSA 10" listing doesn't inherit comps from
+  // the broader "Patrick Mahomes rookie card PSA" query (which would blend in
+  // Herbert, Allen, etc.).
+  const resolvedListings = await Promise.all(
+    listings.map(async (listing) => {
+      try {
+        const resolved = await resolveCompsForListing(listing, supabase, query)
+        if (!resolved || !resolved.fairValue) return null
+        const roi = calculateRoiPct(listing.price, resolved.fairValue.fairValue)
+        if (roi < MIN_ROI_PCT) return null
+        return { ...listing, cardKey: resolved.cardKey, fairValue: resolved.fairValue.fairValue, roi, lowConfidence: resolved.lowConfidence }
+      } catch (err) {
+        console.warn(`[global-scanner] comp resolution failed for "${listing.title}":`, err instanceof Error ? err.message : String(err))
+        return null
+      }
+    })
+  )
+
+  const deals = resolvedListings.filter((d): d is NonNullable<typeof resolvedListings[number]> => d !== null)
+  if (!deals.length) return 0
 
   let inserted = 0
-  for (const listing of listings) {
-    const roi = calculateRoiPct(listing.price, fv.fairValue)
-    if (roi < MIN_ROI_PCT) continue
-
+  for (const deal of deals) {
     const { error } = await supabase.from('alerts').insert({
       watchlist_id: null,
-      ebay_item_id: listing.itemId,
-      card_title: listing.title,
-      listed_price: listing.price,
-      fair_value: Math.round(fv.fairValue * 100) / 100,
-      roi_pct: Math.round(roi * 100) / 100,
+      ebay_item_id: deal.itemId,
+      card_title: deal.title,
+      listed_price: deal.price,
+      fair_value: Math.round(deal.fairValue * 100) / 100,
+      roi_pct: Math.round(deal.roi * 100) / 100,
       grade: null,
       player,
       set_name: null,
-      listing_url: listing.listingUrl,
-      image_url: listing.imageUrl,
-      end_time: listing.endTime ?? null,
-      buying_format: listing.buyingFormat,
+      listing_url: deal.listingUrl,
+      image_url: deal.imageUrl,
+      end_time: deal.endTime ?? null,
+      buying_format: deal.buyingFormat,
       sport,
     })
 

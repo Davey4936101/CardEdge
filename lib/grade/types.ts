@@ -13,6 +13,7 @@ export interface CardIdentity {
   set: string
   cardNumber: string
   cardKey: string // e.g. "mahomes-2018-prizm-168"
+  grade?: { grader: 'PSA' | 'BGS' | 'SGC'; score: number }
 }
 
 // Probability distribution across grades (values sum to 1.0)
