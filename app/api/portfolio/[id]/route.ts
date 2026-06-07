@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 import { buildPortfolioCardKey } from '@/lib/portfolio/card-key'
 import { canTransition } from '@/lib/portfolio/status-machine'
 import type { PortfolioStatus } from '@/lib/portfolio/types'
@@ -8,6 +9,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { id } = await params
   const supabase = createServerClient()
   const body = (await req.json()) as Record<string, unknown>
@@ -16,6 +20,7 @@ export async function PATCH(
     .from('portfolio_cards')
     .select('status, player, set_name, year')
     .eq('id', id)
+    .eq('user_id', userId)
     .single()
 
   if (fetchErr || !current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -60,6 +65,7 @@ export async function PATCH(
     .from('portfolio_cards')
     .update(updates)
     .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single()
 
@@ -68,12 +74,20 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { id } = await params
   const supabase = createServerClient()
-  const { error } = await supabase.from('portfolio_cards').delete().eq('id', id)
+  const { error } = await supabase
+    .from('portfolio_cards')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return new NextResponse(null, { status: 204 })
 }

@@ -1,8 +1,12 @@
 // app/api/grade/ebay-images/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getEbayToken } from '@/lib/ebay/auth'
+import { getEbayToken } from '@/lib/ebay/rapidapi'
+import { getUserFromRequest } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const url = req.nextUrl.searchParams.get('url')
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 })
 

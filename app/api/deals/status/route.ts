@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 
 export interface DealsStatus {
   lastScannedAt: string | null
@@ -7,14 +8,21 @@ export interface DealsStatus {
   hasWatchlists: boolean
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const supabase = createServerClient()
 
   const todayUtc = new Date()
   todayUtc.setUTCHours(0, 0, 0, 0)
 
   const [watchlistsResult, alertsResult] = await Promise.all([
-    supabase.from('watchlists').select('last_scanned_at').eq('is_active', true),
+    supabase
+      .from('watchlists')
+      .select('last_scanned_at')
+      .eq('is_active', true)
+      .eq('user_id', userId),
     supabase
       .from('alerts')
       .select('id', { count: 'exact', head: true })

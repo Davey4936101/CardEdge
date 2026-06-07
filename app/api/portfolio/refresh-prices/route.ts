@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 import { fetchSoldComps } from '@/lib/ebay/rapidapi'
 import { calculateFairValue } from '@/lib/fair-value'
 import type { PortfolioCard } from '@/lib/portfolio/types'
 
-export async function POST() {
+export async function POST(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const supabase = createServerClient()
   const { data: cards } = await supabase
     .from('portfolio_cards')
     .select('*')
+    .eq('user_id', userId)
     .neq('status', 'sold')
     .is('current_value_override', null)
 
@@ -28,6 +33,7 @@ export async function POST() {
           current_value_fetched_at: new Date().toISOString(),
         })
         .eq('id', card.id)
+        .eq('user_id', userId)
       updated++
     } catch {
       // skip failed cards

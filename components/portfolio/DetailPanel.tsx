@@ -7,6 +7,7 @@ import { resolveCurrentValue, unrealizedPnl } from '@/lib/portfolio/pnl'
 import { computeSellSignal } from '@/lib/portfolio/sell-signal'
 import { PriceSparkline } from './PriceSparkline'
 import { LifecycleTimeline } from './LifecycleTimeline'
+import { GradeLadder } from './GradeLadder'
 
 interface PricePoint { price: number; date: string }
 type AdvanceMode = null | 'submit' | 'grade' | 'sell'
@@ -116,6 +117,12 @@ export function DetailPanel({ card, onUpdate, onDelete, onClose }: Props) {
         <div>
           <p className="text-[10px] font-mono text-slate-500 uppercase mb-2">MARKET PRICE · 90D</p>
           <PriceSparkline data={history} />
+        </div>
+
+        {/* Grade Price Ladder */}
+        <div>
+          <p className="text-[10px] font-mono text-slate-500 uppercase mb-2">GRADE PRICE LADDER</p>
+          <GradeLadder cardId={card.id} currentGrade={card.grade} />
         </div>
 
         {/* Lifecycle */}

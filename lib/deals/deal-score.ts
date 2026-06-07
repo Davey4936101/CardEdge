@@ -11,15 +11,19 @@ export interface Alert {
   listing_url: string
   image_url: string | null
   end_time: string | null
+  buying_format: string | null
+  sport: string | null
   is_read: boolean
   created_at: string
   watchlists: { name: string } | null
 }
 
 export type SortKey = 'deal_score' | 'ending_soon' | 'newest' | 'price_asc'
+export type SportFilter = 'All' | 'NFL' | 'NBA' | 'MLB' | 'NHL'
 
 export interface FilterState {
   player: string
+  sport: SportFilter
   gradedOnly: boolean
   rookieOnly: boolean
   minPrice: string
@@ -29,6 +33,7 @@ export interface FilterState {
 
 export const DEFAULT_FILTERS: FilterState = {
   player: '',
+  sport: 'All',
   gradedOnly: false,
   rookieOnly: false,
   minPrice: '',
@@ -38,10 +43,11 @@ export const DEFAULT_FILTERS: FilterState = {
 
 const GRADING_COMPANIES = ['psa', 'bgs', 'sgc', 'csg', 'cgc', 'hga', 'ace', 'beckett']
 
-export function isGraded(grade: string | null): boolean {
-  if (!grade) return false
-  const g = grade.toLowerCase()
-  return GRADING_COMPANIES.some((co) => g.includes(co))
+// Check grade column first; fall back to title scan for global alerts where grade is null
+export function isGraded(grade: string | null, title?: string): boolean {
+  const g = (grade ?? '').toLowerCase()
+  const t = (title ?? '').toLowerCase()
+  return GRADING_COMPANIES.some((co) => g.includes(co) || t.includes(co))
 }
 
 export function isRookie(title: string): boolean {
@@ -66,7 +72,7 @@ export function dealScore(alert: Alert): number {
     else if (hoursLeft <= 72) score += 5
   }
 
-  if (isGraded(alert.grade)) score += 5
+  if (isGraded(alert.grade, alert.card_title)) score += 5
 
   return score
 }
@@ -79,7 +85,8 @@ export function applyFilters(alerts: Alert[], f: FilterState): Alert[] {
 
   return alerts.filter((a) => {
     if (player && !a.player?.toLowerCase().includes(player) && !a.card_title.toLowerCase().includes(player)) return false
-    if (f.gradedOnly && !isGraded(a.grade)) return false
+    if (f.sport !== 'All' && a.sport !== f.sport) return false
+    if (f.gradedOnly && !isGraded(a.grade, a.card_title)) return false
     if (f.rookieOnly && !isRookie(a.card_title)) return false
     if (minPrice !== null && a.listed_price < minPrice) return false
     if (maxPrice !== null && a.listed_price > maxPrice) return false
@@ -128,7 +135,7 @@ export function recommendedAction(alert: Alert): {
     ? (new Date(alert.end_time).getTime() - Date.now()) / (1000 * 60 * 60)
     : null
   const endingSoon = hoursLeft !== null && hoursLeft > 0 && hoursLeft <= 6
-  const graded = isGraded(alert.grade)
+  const graded = isGraded(alert.grade, alert.card_title)
 
   if (roi >= 30 && endingSoon) {
     return {

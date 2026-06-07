@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const supabase = createServerClient()
   const { data, error } = await supabase
     .from('watchlists')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -13,6 +18,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const supabase = createServerClient()
   const body = (await req.json()) as {
     name: string
@@ -26,6 +34,7 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from('watchlists')
     .insert({
+      user_id: userId,
       name: body.name,
       filters: {
         player: body.player,

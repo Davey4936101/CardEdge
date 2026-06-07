@@ -1,7 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { DEFAULT_FILTERS, type FilterState } from '@/lib/deals/deal-score'
+import { DEFAULT_FILTERS, type FilterState, type SportFilter } from '@/lib/deals/deal-score'
 
 interface DealSidebarProps {
   filters: FilterState
@@ -60,6 +60,7 @@ export function DealSidebar({ filters, onChange }: DealSidebarProps) {
 
   const hasActiveFilters =
     filters.player !== DEFAULT_FILTERS.player ||
+    filters.sport !== DEFAULT_FILTERS.sport ||
     filters.gradedOnly !== DEFAULT_FILTERS.gradedOnly ||
     filters.rookieOnly !== DEFAULT_FILTERS.rookieOnly ||
     filters.minPrice !== DEFAULT_FILTERS.minPrice ||
@@ -78,6 +79,26 @@ export function DealSidebar({ filters, onChange }: DealSidebarProps) {
             <X className="size-3" /> Clear
           </button>
         )}
+      </div>
+
+      {/* Sport */}
+      <div>
+        <Label>Sport</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {(['All', 'NFL', 'NBA', 'MLB', 'NHL'] as SportFilter[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => set('sport', s)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                filters.sport === s
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700/60 hover:text-slate-200'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Player */}

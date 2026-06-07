@@ -1,5 +1,5 @@
 // lib/grade/reference-images.ts
-import { getEbayToken } from '@/lib/ebay/auth'
+import { getEbayToken } from '@/lib/ebay/rapidapi'
 import { createServerClient } from '@/lib/supabase/server'
 import type { GradeKey } from './types'
 
@@ -17,40 +17,85 @@ async function fetchGradedImages(
   set: string,
   grade: GradeKey
 ): Promise<string[]> {
-  const token = await getEbayToken()
-  const base =
-    process.env.EBAY_ENVIRONMENT === 'sandbox'
-      ? 'https://api.sandbox.ebay.com'
-      : 'https://api.ebay.com'
+  const query = `${player} ${year} ${set} PSA ${grade}`
 
-  const params = new URLSearchParams({
-    q: `${player} ${year} ${set} PSA ${grade}`,
-    category_ids: '212',
-    filter: 'buyingOptions:{FIXED_PRICE|AUCTION}',
-    limit: '20',
-  })
+  // 1. Official eBay Browse API (requires developer.ebay.com credentials)
+  const clientId = process.env.EBAY_CLIENT_ID
+  const clientSecret = process.env.EBAY_CLIENT_SECRET
+  const hasEbayCreds =
+    clientId &&
+    clientSecret &&
+    clientId !== 'your-client-id' &&
+    clientSecret !== 'your-client-secret'
 
-  const res = await fetch(
-    `${base}/buy/browse/v1/item_summary/search?${params}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-        'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country=US',
-      },
+  if (hasEbayCreds) {
+    try {
+      const token = await getEbayToken()
+      const base =
+        process.env.EBAY_ENVIRONMENT === 'sandbox'
+          ? 'https://api.sandbox.ebay.com'
+          : 'https://api.ebay.com'
+
+      const params = new URLSearchParams({
+        q: query,
+        category_ids: '212',
+        filter: 'buyingOptions:{FIXED_PRICE|AUCTION}',
+        limit: '20',
+      })
+
+      const res = await fetch(`${base}/buy/browse/v1/item_summary/search?${params}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+          'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country=US',
+        },
+      })
+
+      if (res.ok) {
+        const data = (await res.json()) as {
+          itemSummaries?: Array<{ image?: { imageUrl: string } }>
+        }
+        const urls = (data.itemSummaries ?? [])
+          .filter((item) => item.image?.imageUrl)
+          .map((item) => item.image!.imageUrl)
+          .slice(0, TARGET_PER_GRADE)
+        if (urls.length > 0) return urls
+      }
+    } catch {
+      // fall through to OpenWebNinja
     }
-  )
-
-  if (!res.ok) return []
-
-  const data = (await res.json()) as {
-    itemSummaries?: Array<{ image?: { imageUrl: string }; title: string }>
   }
 
-  return (data.itemSummaries ?? [])
-    .filter((item) => item.image?.imageUrl)
-    .map((item) => item.image!.imageUrl)
-    .slice(0, TARGET_PER_GRADE)
+  // 2. OpenWebNinja real-time-ebay-data (no eBay dev account needed)
+  const owKey = process.env.OPENWEBNINJA_API_KEY
+  if (owKey) {
+    try {
+      const params = new URLSearchParams({ query, limit: '20', country: 'us' })
+      const res = await fetch(
+        `https://api.openwebninja.com/real-time-ebay-data/search?${params}`,
+        { cache: 'no-store', headers: { 'x-api-key': owKey } }
+      )
+      if (res.ok) {
+        type RawItem = { image?: string; thumbnail?: string }
+        const raw = (await res.json()) as RawItem[] | { data?: { products?: RawItem[] } | RawItem[]; results?: RawItem[]; items?: RawItem[]; products?: RawItem[] }
+        let items: RawItem[]
+        if (Array.isArray(raw)) items = raw
+        else if (raw.data && !Array.isArray(raw.data) && Array.isArray((raw.data as { products?: RawItem[] }).products)) items = (raw.data as { products: RawItem[] }).products
+        else if (Array.isArray(raw.data)) items = raw.data as RawItem[]
+        else items = (raw as { results?: RawItem[]; items?: RawItem[]; products?: RawItem[] }).results ?? (raw as { results?: RawItem[]; items?: RawItem[]; products?: RawItem[] }).items ?? (raw as { results?: RawItem[]; items?: RawItem[]; products?: RawItem[] }).products ?? []
+
+        const urls = items
+          .map((i) => i.image ?? i.thumbnail ?? '')
+          .filter(Boolean)
+          .slice(0, TARGET_PER_GRADE)
+        if (urls.length > 0) return urls
+      }
+    } catch {
+      // fall through — no reference images available
+    }
+  }
+
+  return []
 }
 
 export async function ensureReferenceImages(

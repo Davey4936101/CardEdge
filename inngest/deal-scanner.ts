@@ -29,7 +29,20 @@ interface WatchlistFilters {
 interface Watchlist {
   id: string
   name: string
+  user_id: string | null
   filters: WatchlistFilters
+}
+
+interface NotifPrefs {
+  email_enabled: boolean
+  email_address: string | null
+  push_enabled: boolean
+}
+
+interface PushSub {
+  endpoint: string
+  p256dh: string
+  auth: string
 }
 
 export const dealScanner = inngest.createFunction(
@@ -40,29 +53,35 @@ export const dealScanner = inngest.createFunction(
     const watchlists = await step.run('fetch-watchlists', async () => {
       const { data, error } = await supabase
         .from('watchlists')
-        .select('id, name, filters')
+        .select('id, name, user_id, filters')
         .eq('is_active', true)
       if (error) throw new Error(error.message)
       return (data ?? []) as Watchlist[]
     })
 
-    // Fetch notification prefs + push subscriptions once per scan run
-    const { data: prefs } = await supabase
-      .from('notification_preferences')
-      .select('email_enabled, email_address, push_enabled')
-      .limit(1)
-      .maybeSingle()
-
-    const { data: pushSubs } = prefs?.push_enabled
-      ? await supabase
-          .from('push_subscriptions')
-          .select('endpoint, p256dh, auth')
-      : { data: [] }
-
     let totalAlerts = 0
 
     for (const watchlist of watchlists) {
       const f = watchlist.filters
+
+      // Load notification prefs scoped to this watchlist's owner
+      let prefs: NotifPrefs | null = null
+      let pushSubs: PushSub[] = []
+      if (watchlist.user_id) {
+        const { data: p } = await supabase
+          .from('notification_preferences')
+          .select('email_enabled, email_address, push_enabled')
+          .eq('user_id', watchlist.user_id)
+          .maybeSingle()
+        prefs = p as NotifPrefs | null
+        if (prefs?.push_enabled) {
+          const { data: subs } = await supabase
+            .from('push_subscriptions')
+            .select('endpoint, p256dh, auth')
+            .eq('user_id', watchlist.user_id)
+          pushSubs = (subs ?? []) as PushSub[]
+        }
+      }
       const searchQuery = [f.player, f.set, f.grade !== 'Any' ? f.grade : '']
         .filter(Boolean)
         .join(' ')
@@ -137,6 +156,7 @@ export const dealScanner = inngest.createFunction(
           listing_url: listing.listingUrl,
           image_url: listing.imageUrl,
           end_time: listing.endTime,
+          buying_format: listing.buyingFormat,
         })
 
         // Skip duplicate eBay items (unique constraint on ebay_item_id)

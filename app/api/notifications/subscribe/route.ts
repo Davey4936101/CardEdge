@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-
-const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
+import { getUserFromRequest } from '@/lib/auth'
 
 export async function POST(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await req.json()) as { endpoint: string; p256dh: string; auth: string }
   const { endpoint, p256dh, auth } = body
 
@@ -14,7 +16,7 @@ export async function POST(req: Request) {
   const supabase = createServerClient()
   const { data, error } = await supabase
     .from('push_subscriptions')
-    .upsert({ user_id: PLACEHOLDER_USER_ID, endpoint, p256dh, auth })
+    .upsert({ user_id: userId, endpoint, p256dh, auth })
     .select()
     .single()
 
@@ -23,6 +25,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await req.json()) as { endpoint: string }
   const { endpoint } = body
 
@@ -33,7 +38,7 @@ export async function DELETE(req: Request) {
     .from('push_subscriptions')
     .delete()
     .eq('endpoint', endpoint)
-    .eq('user_id', PLACEHOLDER_USER_ID)
+    .eq('user_id', userId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return new NextResponse(null, { status: 204 })

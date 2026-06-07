@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 
-const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
+export async function GET(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-export async function GET() {
   const supabase = createServerClient()
   const { data, error } = await supabase
     .from('notification_preferences')
     .select('*')
-    .eq('user_id', PLACEHOLDER_USER_ID)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -27,6 +29,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await req.json()) as {
     email_enabled?: boolean
     email_address?: string
@@ -38,7 +43,7 @@ export async function PATCH(req: Request) {
   const { data, error } = await supabase
     .from('notification_preferences')
     .upsert({
-      user_id: PLACEHOLDER_USER_ID,
+      user_id: userId,
       ...body,
       updated_at: new Date().toISOString(),
     })

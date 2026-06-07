@@ -42,8 +42,9 @@ interface DealCardProps {
 export function DealCard({ alert, onSelect, onRead }: DealCardProps) {
   const router = useRouter()
   const endTime = alert.end_time ? timeUntil(alert.end_time) : null
-  const graded = isGraded(alert.grade)
+  const graded = isGraded(alert.grade, alert.card_title)
   const rookie = isRookie(alert.card_title)
+  const isOffer = alert.buying_format === 'accepts_offers'
   const discount = alert.fair_value - alert.listed_price
   const score = dealScore(alert)
 
@@ -111,6 +112,20 @@ export function DealCard({ alert, onSelect, onRead }: DealCardProps) {
             {rookie && (
               <span className="text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 px-1.5 py-0.5 rounded font-mono">
                 RC
+              </span>
+            )}
+            {isOffer ? (
+              <span className="text-[10px] bg-violet-500/15 text-violet-400 border border-violet-500/25 px-1.5 py-0.5 rounded font-mono">
+                Make Offer
+              </span>
+            ) : (
+              <span className="text-[10px] bg-teal-500/15 text-teal-400 border border-teal-500/25 px-1.5 py-0.5 rounded font-mono">
+                Buy It Now
+              </span>
+            )}
+            {alert.sport && (
+              <span className="text-[10px] bg-slate-700/50 text-slate-500 border border-slate-700/60 px-1.5 py-0.5 rounded">
+                {alert.sport}
               </span>
             )}
             {alert.set_name && (

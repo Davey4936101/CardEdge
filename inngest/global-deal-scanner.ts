@@ -10,21 +10,21 @@ const MIN_ROI_PCT = 10
 // comps from the same query are roughly comparable in value to the listings.
 export const GLOBAL_SCAN_QUERIES = [
   // NFL
-  { query: 'Patrick Mahomes rookie card PSA', player: 'Patrick Mahomes' },
-  { query: 'Josh Allen rookie card PSA', player: 'Josh Allen' },
-  { query: 'Justin Herbert rookie card', player: 'Justin Herbert' },
-  { query: 'Joe Burrow rookie card', player: 'Joe Burrow' },
-  { query: 'Lamar Jackson rookie card', player: 'Lamar Jackson' },
-  { query: 'CJ Stroud rookie card', player: 'CJ Stroud' },
-  { query: 'Caleb Williams rookie card 2024', player: 'Caleb Williams' },
+  { query: 'Patrick Mahomes rookie card PSA', player: 'Patrick Mahomes', sport: 'NFL' },
+  { query: 'Josh Allen rookie card PSA', player: 'Josh Allen', sport: 'NFL' },
+  { query: 'Justin Herbert rookie card', player: 'Justin Herbert', sport: 'NFL' },
+  { query: 'Joe Burrow rookie card', player: 'Joe Burrow', sport: 'NFL' },
+  { query: 'Lamar Jackson rookie card', player: 'Lamar Jackson', sport: 'NFL' },
+  { query: 'CJ Stroud rookie card', player: 'CJ Stroud', sport: 'NFL' },
+  { query: 'Caleb Williams rookie card 2024', player: 'Caleb Williams', sport: 'NFL' },
   // NBA
-  { query: 'Victor Wembanyama rookie card', player: 'Victor Wembanyama' },
-  { query: 'Luka Doncic rookie card', player: 'Luka Doncic' },
-  { query: 'Jayson Tatum rookie card PSA', player: 'Jayson Tatum' },
-  { query: 'Ja Morant rookie card', player: 'Ja Morant' },
+  { query: 'Victor Wembanyama rookie card', player: 'Victor Wembanyama', sport: 'NBA' },
+  { query: 'Luka Doncic rookie card', player: 'Luka Doncic', sport: 'NBA' },
+  { query: 'Jayson Tatum rookie card PSA', player: 'Jayson Tatum', sport: 'NBA' },
+  { query: 'Ja Morant rookie card', player: 'Ja Morant', sport: 'NBA' },
   // Broad graded categories
-  { query: 'PSA 10 rookie card football Prizm', player: null },
-  { query: 'PSA 10 rookie card basketball Prizm', player: null },
+  { query: 'PSA 10 rookie card football Prizm', player: null, sport: 'NFL' },
+  { query: 'PSA 10 rookie card basketball Prizm', player: null, sport: 'NBA' },
 ] as const
 
 function slugify(s: string) {
@@ -34,7 +34,8 @@ function slugify(s: string) {
 async function scanQuery(
   supabase: ReturnType<typeof createServerClient>,
   query: string,
-  player: string | null
+  player: string | null,
+  sport: string
 ): Promise<number> {
   let listings, comps
   try {
@@ -74,6 +75,8 @@ async function scanQuery(
       listing_url: listing.listingUrl,
       image_url: listing.imageUrl,
       end_time: listing.endTime ?? null,
+      buying_format: listing.buyingFormat,
+      sport,
     })
 
     if (error && error.code === '23505') continue // duplicate eBay item
@@ -90,9 +93,9 @@ export const globalDealScanner = inngest.createFunction(
     const supabase = createServerClient()
     let totalAlerts = 0
 
-    for (const { query, player } of GLOBAL_SCAN_QUERIES) {
+    for (const { query, player, sport } of GLOBAL_SCAN_QUERIES) {
       const count = await step.run(`scan-${slugify(query)}`, () =>
-        scanQuery(supabase, query, player)
+        scanQuery(supabase, query, player, sport)
       )
       totalAlerts += count
     }
@@ -111,17 +114,22 @@ export const globalDealScanner = inngest.createFunction(
   }
 )
 
-// Exported for use by the on-demand scan API route — scans a subset of
-// queries synchronously so the deals page can populate immediately.
+// Exported for use by the on-demand scan API route.
+// Clears stale global alerts first so only fresh BIN-only data is shown,
+// then runs queries sequentially to avoid bursting the sold comps rate limit.
 export async function runQuickScan(
   supabase: ReturnType<typeof createServerClient>,
-  querySlice: ReadonlyArray<{ query: string; player: string | null }> = GLOBAL_SCAN_QUERIES.slice(0, 4)
+  querySlice: ReadonlyArray<{ query: string; player: string | null; sport: string }> = GLOBAL_SCAN_QUERIES.slice(0, 3)
 ): Promise<number> {
+  // Wipe existing global alerts — they may contain auction listings from
+  // before the BIN-only filter was added, and stale data is misleading.
+  await supabase.from('alerts').delete().is('watchlist_id', null)
+
   let total = 0
-  for (const { query, player } of querySlice) {
-    total += await scanQuery(supabase, query, player)
-    // Small gap between queries to stay under per-second rate limits
-    await new Promise((r) => setTimeout(r, 400))
+  for (const { query, player, sport } of querySlice) {
+    total += await scanQuery(supabase, query, player, sport)
+    // 600ms between queries keeps sold comps API under its per-second limit
+    await new Promise((r) => setTimeout(r, 600))
   }
   return total
 }

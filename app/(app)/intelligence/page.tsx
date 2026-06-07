@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Zap, TrendingUp, Award, Clock } from 'lucide-react'
+import { ExternalLink, Zap, TrendingUp, Award, Clock, Newspaper, Calendar, AlertCircle } from 'lucide-react'
 import type { Alert } from '@/lib/deals/deal-score'
+import type { Sport } from '@/lib/intel/espn'
+import type { SeasonalWindow } from '@/lib/intel/seasonal-windows'
 import { timeAgo } from '@/lib/utils'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 type GradeHistory = {
   id: string
@@ -16,6 +19,31 @@ type GradeHistory = {
   raw_price: number | null
   ep_regular: number | null
   created_at: string
+}
+
+interface PlayerEvent {
+  id: string
+  player_name: string
+  sport: Sport
+  event_type: string
+  title: string
+  summary: string
+  sentiment: 'bullish' | 'bearish' | 'neutral'
+  severity: 'high' | 'medium' | 'low'
+  source_url: string | null
+  event_date: string
+}
+
+interface PlayerAlertRow {
+  id: string
+  is_read: boolean
+  portfolio_card_id: string
+  player_events: PlayerEvent
+}
+
+interface CurrentWindow {
+  sport: Sport
+  window: SeasonalWindow
 }
 
 function timeUntil(dateStr: string): { label: string; urgent: boolean } | null {
@@ -40,9 +68,28 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   )
 }
 
+const SPORT_LABELS: Record<Sport, string> = { nfl: 'NFL', nba: 'NBA', mlb: 'MLB' }
+const ACTION_COLORS: Record<string, string> = {
+  sell: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+  buy: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
+  hold: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+}
+const SENTIMENT_COLORS: Record<string, string> = {
+  bullish: 'text-emerald-400',
+  bearish: 'text-red-400',
+  neutral: 'text-slate-400',
+}
+const SEVERITY_BADGES: Record<string, string> = {
+  high: 'bg-red-500/20 text-red-400 border-red-500/30',
+  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  low: 'bg-slate-700 text-slate-400 border-slate-600',
+}
+
 export default function IntelligencePage() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null)
   const [gradeHistory, setGradeHistory] = useState<GradeHistory[] | null>(null)
+  const [playerAlerts, setPlayerAlerts] = useState<PlayerAlertRow[] | null>(null)
+  const [seasonal, setSeasonal] = useState<{ current: CurrentWindow[] } | null>(null)
   const [lastUpdated] = useState(() => new Date())
 
   useEffect(() => {
@@ -53,7 +100,26 @@ export default function IntelligencePage() {
     void fetch('/api/grade/history')
       .then((r) => (r.ok ? r.json() : []))
       .then((d: GradeHistory[]) => setGradeHistory(Array.isArray(d) ? d : []))
+
+    void fetchWithAuth('/api/intel/feed')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: PlayerAlertRow[]) => setPlayerAlerts(Array.isArray(d) ? d : []))
+
+    void fetchWithAuth('/api/intel/seasonal')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { current: CurrentWindow[] } | null) => setSeasonal(d))
   }, [])
+
+  function markRead(alertId: string) {
+    setPlayerAlerts((prev) =>
+      prev ? prev.map((a) => (a.id === alertId ? { ...a, is_read: true } : a)) : prev
+    )
+    void fetchWithAuth('/api/intel/feed', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: alertId }),
+    })
+  }
 
   const loading = alerts === null || gradeHistory === null
 
@@ -82,7 +148,6 @@ export default function IntelligencePage() {
     return ms > 0 && ms < 6 * 60 * 60 * 1000
   }).length
 
-  // Player groupings — ≥2 deals
   const playerMap = new Map<string, Alert[]>()
   for (const a of globalAlerts) {
     const key = a.player ?? 'Unknown'
@@ -99,7 +164,6 @@ export default function IntelligencePage() {
     }))
     .sort((a, b) => b.avgRoi - a.avgRoi)
 
-  // Grade opportunity
   const gradeCount = gradeHistory.length
   const avgReliability = gradeCount > 0
     ? gradeHistory.reduce((s, g) => s + (g.reliability_score ?? 0), 0) / gradeCount
@@ -118,7 +182,6 @@ export default function IntelligencePage() {
     : 0
   const topGradeCard = gradeHistory.length > 0 ? gradeHistory[0] : null
 
-  // Action queue — alerts ending <24h
   const actionQueue = alerts
     .filter((a) => {
       if (!a.end_time) return false
@@ -127,17 +190,137 @@ export default function IntelligencePage() {
     })
     .sort((a, b) => new Date(a.end_time!).getTime() - new Date(b.end_time!).getTime())
 
+  const unreadAlerts = (playerAlerts ?? []).filter((a) => !a.is_read)
+  const highSeverityAlerts = (playerAlerts ?? []).filter((a) => a.player_events?.severity === 'high')
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       <div className="flex items-start justify-between mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Intelligence</h1>
-          <p className="text-sm text-slate-400 mt-1">Market signals, segment analysis, and grading opportunities.</p>
+          <p className="text-sm text-slate-400 mt-1">Player news, seasonal windows, market signals, and grading opportunities.</p>
         </div>
         <p className="text-xs text-slate-600 flex-shrink-0 mt-1">
           Updated {timeAgo(lastUpdated.toISOString())}
         </p>
       </div>
+
+      {/* Player Event Feed */}
+      <Section title="Player Intel" icon={<Newspaper className="size-4" />}>
+        {playerAlerts === null ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-slate-800 animate-pulse" />)}
+          </div>
+        ) : playerAlerts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-800 py-10 text-center">
+            <p className="text-sm text-slate-500">No player events yet.</p>
+            <p className="text-xs text-slate-600 mt-1">The scanner runs every 6 hours and monitors ESPN news for your portfolio players.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {playerAlerts.slice(0, 10).map((alertRow) => {
+              const ev = alertRow.player_events
+              if (!ev) return null
+              return (
+                <div
+                  key={alertRow.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                    alertRow.is_read
+                      ? 'border-slate-800 bg-slate-900/20 opacity-60'
+                      : 'border-slate-700 bg-slate-900/60'
+                  }`}
+                >
+                  {/* Severity badge */}
+                  <span className={`flex-shrink-0 text-[9px] font-mono font-bold uppercase border rounded px-1.5 py-0.5 mt-0.5 ${SEVERITY_BADGES[ev.severity]}`}>
+                    {ev.severity}
+                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-100">{ev.player_name}</span>
+                      <span className={`text-[10px] font-mono ${SENTIMENT_COLORS[ev.sentiment]}`}>
+                        {ev.sentiment}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-600 uppercase">{ev.event_type}</span>
+                      <span className="text-[10px] font-mono text-slate-600">{SPORT_LABELS[ev.sport]}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">{ev.title}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{ev.summary}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] text-slate-600">{timeAgo(ev.event_date)}</span>
+                      {ev.source_url && (
+                        <a
+                          href={ev.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-0.5 text-[9px] text-indigo-400 hover:text-indigo-300"
+                        >
+                          ESPN <ExternalLink className="size-2.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {!alertRow.is_read && (
+                    <button
+                      onClick={() => markRead(alertRow.id)}
+                      className="flex-shrink-0 text-[9px] font-mono text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-500 px-1.5 py-0.5 rounded transition-colors"
+                    >
+                      READ
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            {playerAlerts.length > 10 && (
+              <p className="text-xs text-slate-600 text-center pt-1">
+                +{playerAlerts.length - 10} more events
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Summary badges */}
+        {playerAlerts && playerAlerts.length > 0 && (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {unreadAlerts.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-mono text-amber-400 border border-amber-500/30 bg-amber-500/10 rounded px-2 py-0.5">
+                <AlertCircle className="size-2.5" />
+                {unreadAlerts.length} unread
+              </span>
+            )}
+            {highSeverityAlerts.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-mono text-red-400 border border-red-500/30 bg-red-500/10 rounded px-2 py-0.5">
+                {highSeverityAlerts.length} high severity
+              </span>
+            )}
+          </div>
+        )}
+      </Section>
+
+      {/* Seasonal Windows */}
+      <Section title="Seasonal Calendar" icon={<Calendar className="size-4" />}>
+        {seasonal === null ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-28 rounded-xl bg-slate-800 animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {seasonal.current.map(({ sport, window: win }) => (
+              <div key={sport} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">{SPORT_LABELS[sport]}</p>
+                  <span className={`text-[10px] font-mono font-bold uppercase border rounded px-1.5 py-0.5 ${ACTION_COLORS[win.action]}`}>
+                    {win.action}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-slate-100">{win.label}</p>
+                <p className="text-[10px] text-slate-500 mt-1 leading-snug">{win.reason}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
 
       {/* Market Snapshot */}
       <Section title="Market Snapshot" icon={<TrendingUp className="size-4" />}>

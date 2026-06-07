@@ -1,9 +1,13 @@
 // app/api/grade/analyze/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getUserFromRequest } from '@/lib/auth'
 import { inngest } from '@/inngest/client'
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await req.json()) as {
     imageUrls: string[]
     rawPrice: number
@@ -24,6 +28,7 @@ export async function POST(req: NextRequest) {
       card_key: 'pending',
       mode: body.mode,
       status: 'pending',
+      user_id: userId,
       ebay_item_id: body.ebayItemId,
       image_urls: body.imageUrls,
       raw_price: body.rawPrice,
