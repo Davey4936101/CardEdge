@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { PortfolioCard } from '@/lib/portfolio/types'
 import { resolveCurrentValue, unrealizedPnl } from '@/lib/portfolio/pnl'
+import { computeSellSignal } from '@/lib/portfolio/sell-signal'
 
 const STATUS_LABEL: Record<string, string> = {
   raw_owned: 'RAW', submitted: 'SUBMITTED', graded_owned: 'GRADED', sold: 'SOLD',
@@ -96,6 +97,7 @@ export function PositionsTable({ cards, selectedId, onSelect, onAdd }: Props) {
             <Th k="raw_purchase_price" label="COST" />
             <Th k="value" label="VALUE" />
             <Th k="pnl" label="P&L" />
+            <th className="text-left text-[10px] font-mono uppercase tracking-wider px-3 py-2 text-slate-500 whitespace-nowrap">SIGNAL</th>
             <Th k="age" label="AGE" />
           </tr>
         </thead>
@@ -135,6 +137,16 @@ export function PositionsTable({ cards, selectedId, onSelect, onAdd }: Props) {
                       {pnl.amount >= 0 ? '+' : ''}{pnl.pct.toFixed(1)}%
                     </span>
                   ) : <span className="text-slate-600">—</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  {card.status !== 'sold' ? (() => {
+                    const sig = computeSellSignal(card)
+                    const badgeColor = sig.signal === 'SELL NOW' ? 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10' :
+                      sig.signal === 'SELL SOON' ? 'text-amber-400 border-amber-400/40 bg-amber-400/10' :
+                      sig.signal === 'ACCUMULATE' ? 'text-indigo-400 border-indigo-400/40' :
+                      'text-slate-500 border-slate-700'
+                    return <span className={`text-[9px] font-mono font-bold border px-1.5 py-0.5 rounded whitespace-nowrap ${badgeColor}`}>{sig.signal}</span>
+                  })() : <span className="text-slate-600 text-[10px] font-mono">—</span>}
                 </td>
                 <td className="px-3 py-2.5 font-mono text-xs text-slate-500">{daysHeld(card.raw_purchase_date)}d</td>
               </tr>

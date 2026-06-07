@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, ExternalLink } from 'lucide-react'
 import type { PortfolioCard } from '@/lib/portfolio/types'
 import { resolveCurrentValue, unrealizedPnl } from '@/lib/portfolio/pnl'
+import { computeSellSignal } from '@/lib/portfolio/sell-signal'
 import { PriceSparkline } from './PriceSparkline'
 import { LifecycleTimeline } from './LifecycleTimeline'
 
@@ -70,6 +71,24 @@ export function DetailPanel({ card, onUpdate, onDelete, onClose }: Props) {
       </div>
 
       <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        {/* Sell Signal */}
+        {(() => {
+          const sig = computeSellSignal(card)
+          return (
+            <div className={`rounded-lg border px-3 py-2.5 ${
+              sig.signal === 'SELL NOW' ? 'border-emerald-500/30 bg-emerald-500/10' :
+              sig.signal === 'SELL SOON' ? 'border-amber-500/30 bg-amber-500/10' :
+              sig.signal === 'ACCUMULATE' ? 'border-indigo-500/30 bg-indigo-500/10' :
+              'border-slate-700 bg-slate-800/40'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Signal</span>
+                <span className={`text-xs font-mono font-bold ${sig.color}`}>{sig.signal}</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">{sig.reason}</p>
+            </div>
+          )
+        })()}
         {/* Value summary */}
         <div className="grid grid-cols-2 gap-3">
           <div>

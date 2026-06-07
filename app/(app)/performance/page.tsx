@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TrendingUp } from 'lucide-react'
 import type { PortfolioCard } from '@/lib/portfolio/types'
 import { realizedPnl, unrealizedPnl, resolveCurrentValue } from '@/lib/portfolio/pnl'
+import { computeSellSignal } from '@/lib/portfolio/sell-signal'
 
 function daysHeld(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
@@ -314,6 +315,39 @@ export default function PerformancePage() {
           ))}
         </div>
       </section>
+
+      {/* Sell Signals */}
+      {(() => {
+        const actionable = rows.filter(r => {
+          const sig = computeSellSignal(r.card)
+          return sig.signal === 'SELL NOW' || sig.signal === 'SELL SOON'
+        })
+        if (actionable.length === 0) return null
+        return (
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold text-slate-100 mb-3">Sell Signals</h2>
+            <div className="space-y-2">
+              {actionable.map(row => {
+                const sig = computeSellSignal(row.card)
+                return (
+                  <div key={row.card.id} className={`flex items-center justify-between rounded-lg border px-4 py-3 ${sig.signal === 'SELL NOW' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+                    <div>
+                      <p className="text-xs font-mono font-semibold text-slate-100">{row.card.player}</p>
+                      <p className="text-[10px] font-mono text-slate-400">{sig.reason}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-mono font-bold ${sig.color}`}>{sig.signal}</span>
+                      <Link href="/portfolio" className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 border border-indigo-800 hover:border-indigo-600 px-2 py-1 rounded">
+                        VIEW →
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )
+      })()}
     </div>
   )
 }

@@ -1,13 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Bell, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { supabase } from '@/lib/supabase/client'
+import type { Alert } from '@/lib/deals/deal-score'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -20,6 +23,22 @@ const navLinks = [
 
 export function AppNav() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/alerts')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: Alert[]) =>
+        setUnreadCount(Array.isArray(d) ? d.filter((a: Alert) => !a.is_read).length : 0)
+      )
+  }, [])
 
   return (
     <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
@@ -48,14 +67,34 @@ export function AppNav() {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon">
-            <Bell className="h-4 w-4" />
-            <span className="sr-only">Notifications</span>
-          </Button>
+          {/* Bell with unread badge */}
+          <div className="relative">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/deals')}>
+              <Bell className="h-4 w-4" />
+              <span className="sr-only">Notifications</span>
+            </Button>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+
           <ThemeToggle />
+
+          {/* Sign out */}
+          {userEmail && (
+            <button
+              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+              className="text-[10px] font-mono text-slate-500 hover:text-slate-300 hidden md:block transition-colors"
+            >
+              Sign out
+            </button>
+          )}
+
           <Avatar className="h-8 w-8 ml-1 hidden md:flex">
             <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-              DD
+              {userEmail ? userEmail[0].toUpperCase() : 'DD'}
             </AvatarFallback>
           </Avatar>
 
