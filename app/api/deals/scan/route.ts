@@ -19,6 +19,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ newDeals, queriesScanned: slice.length })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('429') || msg.toLowerCase().includes('too many')) {
+      return NextResponse.json({ error: 'Rate limited — try again in a minute', newDeals: 0 }, { status: 429 })
+    }
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

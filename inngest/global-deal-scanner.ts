@@ -36,10 +36,20 @@ async function scanQuery(
   query: string,
   player: string | null
 ): Promise<number> {
-  const [listings, comps] = await Promise.all([
-    searchListings(query),
-    fetchSoldComps(query),
-  ])
+  let listings, comps
+  try {
+    ;[listings, comps] = await Promise.all([
+      searchListings(query),
+      fetchSoldComps(query),
+    ])
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('429') || msg.toLowerCase().includes('too many')) {
+      console.warn(`[global-scanner] rate limited on "${query}", skipping`)
+      return 0
+    }
+    throw err
+  }
 
   if (listings.length === 0 || comps.length < 3) return 0
 
@@ -107,8 +117,11 @@ export async function runQuickScan(
   supabase: ReturnType<typeof createServerClient>,
   querySlice: ReadonlyArray<{ query: string; player: string | null }> = GLOBAL_SCAN_QUERIES.slice(0, 4)
 ): Promise<number> {
-  const results = await Promise.all(
-    querySlice.map(({ query, player }) => scanQuery(supabase, query, player))
-  )
-  return results.reduce((a, b) => a + b, 0)
+  let total = 0
+  for (const { query, player } of querySlice) {
+    total += await scanQuery(supabase, query, player)
+    // Small gap between queries to stay under per-second rate limits
+    await new Promise((r) => setTimeout(r, 400))
+  }
+  return total
 }

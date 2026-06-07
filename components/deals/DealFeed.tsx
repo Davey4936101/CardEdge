@@ -59,11 +59,17 @@ export function DealFeed() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full }),
       })
-      if (!res.ok) throw new Error('Scan failed')
-      const { newDeals } = (await res.json()) as { newDeals: number }
-      setLastScanCount(newDeals)
-      setScanState('done')
-      // Reload alerts to reflect newly inserted rows
+      const json = (await res.json()) as { newDeals?: number; error?: string }
+      if (res.status === 429) {
+        // Rate limited — don't mark as error, just show what we have
+        setScanState('done')
+        setLastScanCount(0)
+      } else if (!res.ok) {
+        throw new Error(json.error ?? 'Scan failed')
+      } else {
+        setLastScanCount(json.newDeals ?? 0)
+        setScanState('done')
+      }
       await load()
     } catch {
       setScanState('error')
@@ -81,13 +87,19 @@ export function DealFeed() {
     return () => { void supabase.removeChannel(channel) }
   }, [load])
 
-  // Auto-scan once on first load if the feed is empty
+  // Auto-scan on first load if no global deals or last scan was >30 min ago
   useEffect(() => {
-    if (!loading && alerts.length === 0 && !autoScanFired.current) {
-      autoScanFired.current = true
-      void triggerScan(false)
+    if (loading || autoScanFired.current) return
+    autoScanFired.current = true
+    const hasGlobalDeals = alerts.some((a) => a.watchlist_id === null)
+    const lastScan = parseInt(localStorage.getItem('lastDealScan') ?? '0', 10)
+    const stale = Date.now() - lastScan > 30 * 60 * 1000
+    if (!hasGlobalDeals || stale) {
+      void triggerScan(false).then(() => {
+        localStorage.setItem('lastDealScan', String(Date.now()))
+      })
     }
-  }, [loading, alerts.length, triggerScan])
+  }, [loading, alerts, triggerScan])
 
   // Reset pagination when filters or sort change
   useEffect(() => { setPage(1) }, [filters, sortKey])

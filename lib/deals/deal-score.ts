@@ -1,5 +1,6 @@
 export interface Alert {
   id: string
+  watchlist_id: string | null
   card_title: string
   listed_price: number
   fair_value: number
