@@ -473,7 +473,7 @@ async function fetchSoldCompsEbay(keywords: string): Promise<SoldComp[]> {
 
   const res = await fetch(
     `https://svcs.ebay.com/services/search/FindingService/v1?${params}`,
-    { cache: 'no-store' }
+    { cache: 'no-store', signal: AbortSignal.timeout(10_000) }
   )
 
   if (!res.ok) {
@@ -494,7 +494,10 @@ async function fetchSoldCompsEbay(keywords: string): Promise<SoldComp[]> {
   }
 
   const response = data.findCompletedItemsResponse?.[0]
-  if (response?.ack?.[0] !== 'Success') throw new Error('eBay Finding API returned non-success ack')
+  if (response?.ack?.[0] !== 'Success') {
+    const errMsg = (response as Record<string, unknown>)?.errorMessage
+    throw new Error(`eBay Finding API non-success ack: ${JSON.stringify(errMsg ?? response)}`)
+  }
 
   const items = response.searchResult?.[0]?.item ?? []
 
