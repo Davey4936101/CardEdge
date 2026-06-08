@@ -5,7 +5,7 @@ import { getUserFromRequest } from '@/lib/auth'
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await getUserFromRequest(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -16,6 +16,7 @@ export async function PUT(
     return NextResponse.json({ error: 'actualGrade must be a number between 1 and 10' }, { status: 400 })
   }
 
+  const { id } = await params
   const supabase = createServerClient()
 
   const { error } = await supabase
@@ -24,7 +25,7 @@ export async function PUT(
       actual_psa_grade: actualGrade,
       outcome_logged_at: new Date().toISOString(),
     })
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', userId)
 
   if (error) return NextResponse.json({ error: 'Update failed' }, { status: 500 })

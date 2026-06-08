@@ -6,14 +6,15 @@ import type { PopSnapshot } from '@/lib/grade/pop-velocity'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { cardKey: string } }
+  { params }: { params: Promise<{ cardKey: string }> }
 ) {
+  const { cardKey } = await params
   const supabase = createServerClient()
 
   const { data, error } = await supabase
     .from('pop_snapshots')
     .select('snapshot_date, count_10, count_9, count_8, count_7, total')
-    .eq('card_key', params.cardKey)
+    .eq('card_key', cardKey)
     .order('snapshot_date', { ascending: false })
     .limit(90)
 
