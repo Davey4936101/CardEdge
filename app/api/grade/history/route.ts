@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from('grade_analyses')
-    .select('id, card_key, mode, status, recommendation, reliability_score, raw_price, ep_regular, created_at')
+    .select('id, card_key, mode, status, recommendation, reliability_score, raw_price, ep_regular, continuous_score, actual_psa_grade, created_at')
     .eq('status', 'complete')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
