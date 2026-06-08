@@ -47,8 +47,10 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
       return
     }
 
-    // Step 3: Centering (use front image)
-    const centering = await measureCentering(input.imageUrls[0])
+    // Step 3: Centering (front and back)
+    const frontImageUrl = input.imageUrls[0]
+    const backImageUrl = input.imageUrls[1] ?? input.imageUrls[0] // fallback to front if no back image
+    const centering = await measureCentering(frontImageUrl, backImageUrl)
 
     // Step 4: Reference images + grade distribution prior (parallel)
     const [_, prior] = await Promise.all([
@@ -62,7 +64,7 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
     const attributes = await analyzeAttributes(input.imageUrls, referenceImages)
 
     // Step 6: Bayesian grade distribution
-    const distribution = applyBayesianUpdate(prior, attributes, centering.psa10Eligible)
+    const distribution = applyBayesianUpdate(prior, attributes, centering.front.psa10Eligible)
 
     // Step 7: Graded comps + EV (parallel)
     const comps = await fetchGradedComps(identity.player, identity.year, identity.set, identity.cardNumber)
@@ -88,9 +90,12 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
     await updateRow({
       status: 'complete',
       card_key: identity.cardKey,
-      centering_lr: centering.leftRight,
-      centering_tb: centering.topBottom,
-      centering_eligible: centering.psa10Eligible,
+      centering_front_lr: centering.front.leftRight,
+      centering_front_tb: centering.front.topBottom,
+      centering_front_eligible: centering.front.psa10Eligible,
+      centering_back_lr: centering.back.leftRight,
+      centering_back_tb: centering.back.topBottom,
+      centering_back_eligible: centering.back.psa10Eligible,
       corner_assessment: attributes.find((a) => a.attribute === 'corners')?.assessment,
       edge_assessment: attributes.find((a) => a.attribute === 'edges')?.assessment,
       surface_assessment: attributes.find((a) => a.attribute === 'surface')?.assessment,

@@ -27,16 +27,30 @@ export function AttributeBreakdown({ result }: Props) {
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         <div className="px-5 py-3 grid grid-cols-3 gap-4">
           <div>
-            <p className="text-xs text-slate-400 mb-1">Centering</p>
+            <p className="text-xs text-slate-400 mb-1">Front Centering</p>
             <p className="font-mono font-semibold">
-              {result.centering_lr != null ? `${result.centering_lr}/${100 - result.centering_lr} L-R` : '— L-R'}
+              {result.centering_front_lr != null ? `${result.centering_front_lr}/${100 - result.centering_front_lr} L-R` : '— L-R'}
             </p>
             <p className="font-mono text-sm text-slate-500">
-              {result.centering_tb != null ? `${result.centering_tb}/${100 - result.centering_tb} T-B` : '— T-B'}
+              {result.centering_front_tb != null ? `${result.centering_front_tb}/${100 - result.centering_front_tb} T-B` : '— T-B'}
             </p>
-            {result.centering_eligible != null && (
-              <span className={`text-xs font-medium ${result.centering_eligible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {result.centering_eligible ? 'PSA 10 eligible ✓' : 'Not PSA 10 eligible'}
+            {result.centering_front_eligible != null && (
+              <span className={`text-xs font-medium ${result.centering_front_eligible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {result.centering_front_eligible ? 'PSA 10 eligible ✓' : 'Not PSA 10 eligible'}
+              </span>
+            )}
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Back Centering</p>
+            <p className="font-mono font-semibold">
+              {result.centering_back_lr != null ? `${result.centering_back_lr}/${100 - result.centering_back_lr} L-R` : '— L-R'}
+            </p>
+            <p className="font-mono text-sm text-slate-500">
+              {result.centering_back_tb != null ? `${result.centering_back_tb}/${100 - result.centering_back_tb} T-B` : '— T-B'}
+            </p>
+            {result.centering_back_eligible != null && (
+              <span className={`text-xs font-medium ${result.centering_back_eligible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {result.centering_back_eligible ? 'PSA 10 eligible ✓' : 'Not PSA 10 eligible'}
               </span>
             )}
           </div>
