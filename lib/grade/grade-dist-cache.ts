@@ -55,6 +55,10 @@ export async function getGradeDistribution(
 
     await supabase.from('grade_dist_cache').upsert({
       card_key: cardKey,
+      player,
+      year_val: year,
+      set_name: set,
+      card_number: cardNumber,
       grades: { 10: popData.count10, 9: popData.count9, 8: popData.count8, 7: popData.count7 },
       total: popData.total,
       last_fetched: new Date().toISOString(),
@@ -79,6 +83,10 @@ export async function getGradeDistribution(
     if (total >= 5) {
       await supabase.from('grade_dist_cache').upsert({
         card_key: cardKey,
+        player,
+        year_val: year,
+        set_name: set,
+        card_number: cardNumber,
         grades,
         total,
         last_fetched: new Date().toISOString(),
