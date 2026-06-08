@@ -1,5 +1,6 @@
 // components/grade/SubmissionVerdict.tsx
 import type { GradeAnalysisRow } from '@/lib/grade/types'
+import { PopVelocityBadge } from './PopVelocityBadge'
 
 const TIER_LABEL: Record<string, string> = {
   regular: 'Regular ($25 · ~45 days)',
@@ -96,6 +97,7 @@ export function SubmissionVerdict({ result, onTrack }: Props) {
               Gem rate: {fmtPct(result.pop_gem_rate)} of {result.pop_total.toLocaleString()} submitted
             </p>
           )}
+          <PopVelocityBadge cardKey={result.card_key} />
         </div>
       )}
     </div>
