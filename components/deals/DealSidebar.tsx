@@ -65,7 +65,8 @@ export function DealSidebar({ filters, onChange }: DealSidebarProps) {
     filters.rookieOnly !== DEFAULT_FILTERS.rookieOnly ||
     filters.minPrice !== DEFAULT_FILTERS.minPrice ||
     filters.maxPrice !== DEFAULT_FILTERS.maxPrice ||
-    filters.minRoi !== DEFAULT_FILTERS.minRoi
+    filters.minRoi !== DEFAULT_FILTERS.minRoi ||
+    filters.positiveGradingEv !== DEFAULT_FILTERS.positiveGradingEv
 
   return (
     <aside className="w-[200px] flex-shrink-0 flex flex-col gap-5 bg-slate-900/60 border border-slate-800 rounded-xl p-4 h-fit sticky top-4">
@@ -163,6 +164,12 @@ export function DealSidebar({ filters, onChange }: DealSidebarProps) {
           onChange={(v) => set('gradedOnly', v)}
         >
           Graded only
+        </CheckboxRow>
+        <CheckboxRow
+          checked={filters.positiveGradingEv}
+          onChange={(v) => set('positiveGradingEv', v)}
+        >
+          Positive Grading EV
         </CheckboxRow>
       </div>
     </aside>

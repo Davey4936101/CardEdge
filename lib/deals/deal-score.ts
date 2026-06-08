@@ -16,6 +16,10 @@ export interface Alert {
   is_read: boolean
   created_at: string
   watchlists: { name: string } | null
+  // Phase 2 grade potential (nullable — enriched asynchronously)
+  grade_potential_score: number | null
+  ev_if_graded: number | null
+  grade_upside: number | null
 }
 
 export type SortKey = 'deal_score' | 'ending_soon' | 'newest' | 'price_asc'
@@ -29,6 +33,7 @@ export interface FilterState {
   minPrice: string
   maxPrice: string
   minRoi: string
+  positiveGradingEv: boolean
 }
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -39,6 +44,7 @@ export const DEFAULT_FILTERS: FilterState = {
   minPrice: '',
   maxPrice: '',
   minRoi: '5',
+  positiveGradingEv: false,
 }
 
 const GRADING_COMPANIES = ['psa', 'bgs', 'sgc', 'csg', 'cgc', 'hga', 'ace', 'beckett']
@@ -83,7 +89,7 @@ export function applyFilters(alerts: Alert[], f: FilterState): Alert[] {
   const maxPrice = f.maxPrice !== '' ? parseFloat(f.maxPrice) : null
   const minRoi = f.minRoi !== '' ? parseFloat(f.minRoi) : null
 
-  return alerts.filter((a) => {
+  let result = alerts.filter((a) => {
     if (player && !a.player?.toLowerCase().includes(player) && !a.card_title.toLowerCase().includes(player)) return false
     if (f.sport !== 'All' && a.sport !== f.sport) return false
     if (f.gradedOnly && !isGraded(a.grade, a.card_title)) return false
@@ -93,6 +99,11 @@ export function applyFilters(alerts: Alert[], f: FilterState): Alert[] {
     if (minRoi !== null && a.roi_pct < minRoi) return false
     return true
   })
+
+  if (f.positiveGradingEv) {
+    result = result.filter((a) => (a.grade_upside ?? -Infinity) > 0)
+  }
+  return result
 }
 
 export function sortAlerts(alerts: Alert[], key: SortKey): Alert[] {

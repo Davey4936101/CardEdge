@@ -4,6 +4,7 @@ import { ExternalLink, ShoppingCart, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { isGraded, isRookie, dealScore, type Alert } from '@/lib/deals/deal-score'
 import { timeAgo } from '@/lib/utils'
+import { GradePotentialBadge } from './GradePotentialBadge'
 
 function timeUntil(dateStr: string): { label: string; urgent: boolean } | null {
   const ms = new Date(dateStr).getTime() - Date.now()
@@ -165,6 +166,10 @@ export function DealCard({ alert, onSelect, onRead }: DealCardProps) {
       {/* Actions */}
       <div className="flex flex-col items-end justify-between flex-shrink-0 gap-2">
         <RoiBadge roi={alert.roi_pct} />
+        <GradePotentialBadge
+          psa10Prob={alert.grade_potential_score}
+          gradeUpside={alert.grade_upside}
+        />
         <div className="flex flex-col items-end gap-1.5">
           <a
             href={alert.listing_url}
