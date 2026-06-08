@@ -20,6 +20,10 @@ export interface PopVelocityResult {
   message: string
 }
 
+const GEM_RATE_CHANGE_THRESHOLD = 0.02    // 2% gem rate delta = trend signal
+const HIGH_PRESSURE_THRESHOLD   = 0.15    // >15% 30-day PSA 10 growth
+const MODERATE_PRESSURE_THRESHOLD = 0.05  // 5–15% = moderate; <5% = low
+
 export function computePopVelocity(snapshots: PopSnapshot[]): PopVelocityResult | null {
   if (snapshots.length === 0) return null
 
@@ -46,19 +50,20 @@ export function computePopVelocity(snapshots: PopSnapshot[]): PopVelocityResult 
   const gemRateDelta = gemRateLatest - gemRate90
 
   const gemRateTrend: PopTrend =
-    gemRateDelta > 0.02 ? 'rising' :
-    gemRateDelta < -0.02 ? 'falling' : 'stable'
+    gemRateDelta > GEM_RATE_CHANGE_THRESHOLD ? 'rising' :
+    gemRateDelta < -GEM_RATE_CHANGE_THRESHOLD ? 'falling' : 'stable'
 
   const popPressure: PopPressure =
-    pop10GrowthRate30d > 0.15 ? 'high' :
-    pop10GrowthRate30d > 0.05 ? 'moderate' : 'low'
+    pop10GrowthRate30d > HIGH_PRESSURE_THRESHOLD ? 'high' :
+    pop10GrowthRate30d > MODERATE_PRESSURE_THRESHOLD ? 'moderate' : 'low'
 
   const pct = Math.round(pop10GrowthRate30d * 100)
+  const sign = pop10Growth30d >= 0 ? '+' : ''
   const message =
     popPressure === 'high'
-      ? `PSA 10 population: ${latest.count_10} copies. +${pop10Growth30d} in 30 days (+${pct}%). Submit soon before additional supply compresses pricing.`
+      ? `PSA 10 population: ${latest.count_10} copies. ${sign}${pop10Growth30d} in 30 days (${sign}${pct}%). Submit soon before additional supply compresses pricing.`
       : popPressure === 'moderate'
-      ? `PSA 10 population: ${latest.count_10} copies. +${pop10Growth30d} in 30 days (+${pct}%). Moderate growth — monitor before submitting.`
+      ? `PSA 10 population: ${latest.count_10} copies. ${sign}${pop10Growth30d} in 30 days (${sign}${pct}%). Moderate growth — monitor before submitting.`
       : `PSA 10 population: ${latest.count_10} copies. Population stable. No near-term pricing pressure.`
 
   return {
