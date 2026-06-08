@@ -56,7 +56,7 @@ export function SubGradeBreakdown({ result }: Props) {
       <SubGradeBar
         label="Corners"
         score={result.subgrade_corners}
-        notes={result.attribute_details?.find((a) => a.attribute === 'corners')?.notes + cornerWorst}
+        notes={(result.attribute_details?.find((a) => a.attribute === 'corners')?.notes ?? '') + cornerWorst || undefined}
       />
       <SubGradeBar
         label="Edges"
