@@ -37,6 +37,30 @@ export async function POST(req: Request) {
       )
     }
 
+    // Fire grade-potential enrichment for new alerts (best-effort, non-blocking)
+    if (newDeals > 0) {
+      const { data: freshAlerts } = await supabase
+        .from('alerts')
+        .select('id, image_url, card_title, listed_price')
+        .order('created_at', { ascending: false })
+        .limit(newDeals)
+
+      if (freshAlerts && freshAlerts.length > 0) {
+        const { inngest: inngestClient } = await import('@/inngest/client')
+        await inngestClient.send(
+          (freshAlerts as Array<{ id: string; image_url: string | null; card_title: string; listed_price: number }>).map((a) => ({
+            name: 'deals/grade-potential.requested' as const,
+            data: {
+              alertId: a.id,
+              imageUrl: a.image_url,
+              cardTitle: a.card_title,
+              listedPrice: Number(a.listed_price),
+            },
+          }))
+        )
+      }
+    }
+
     return NextResponse.json({ newDeals, queriesScanned: slice.length })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
