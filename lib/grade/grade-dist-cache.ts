@@ -1,5 +1,6 @@
 // lib/grade/grade-dist-cache.ts
 import { searchListings } from '@/lib/ebay/rapidapi'
+import { getPopData } from '@/lib/psa/api-client'
 import { createServerClient } from '@/lib/supabase/server'
 import type { GradeDistribution, GradeKey } from './types'
 
@@ -15,64 +16,80 @@ export function parseGradeFromTitle(title: string): GradeKey | null {
   return null
 }
 
-interface GradeCount {
-  grades: Partial<Record<GradeKey, number>>
-  total: number
-}
-
-async function fetchFromEbay(_cardKey: string, player: string, year: number, set: string): Promise<GradeCount> {
-  const listings = await searchListings(`${player} ${year} ${set} PSA`)
-  const grades: Partial<Record<GradeKey, number>> = {}
-  let total = 0
-
-  for (const listing of listings) {
-    const grade = parseGradeFromTitle(listing.title)
-    if (grade !== null) {
-      grades[grade] = (grades[grade] ?? 0) + 1
-      total++
-    }
-  }
-
-  return { grades, total }
-}
-
+// Try PSA API first; fall back to eBay listing grade counts; fall back to flat prior.
 export async function getGradeDistribution(
   cardKey: string,
   player: string,
   year: number,
-  set: string
-): Promise<GradeDistribution> {
+  set: string,
+  cardNumber: string
+): Promise<{ distribution: GradeDistribution; popData: { count10: number; count9: number; count8: number; count7: number; total: number; gemRate: number } | null }> {
   const supabase = createServerClient()
 
+  // Check cache
   const { data: cached } = await supabase
     .from('grade_dist_cache')
     .select('*')
     .eq('card_key', cardKey)
     .single()
 
-  if (
-    cached &&
-    Date.now() - new Date(cached.last_fetched).getTime() < CACHE_TTL_MS
-  ) {
-    return normalizeGrades(cached.grades as Partial<Record<GradeKey, number>>, cached.total)
+  if (cached && Date.now() - new Date(cached.last_fetched).getTime() < CACHE_TTL_MS) {
+    return {
+      distribution: normalizeGrades(
+        cached.grades as Partial<Record<GradeKey, number>>,
+        cached.total
+      ),
+      popData: null,
+    }
   }
 
-  try {
-    const { grades, total } = await fetchFromEbay(cardKey, player, year, set)
-
-    if (total < 5) return FLAT_PRIOR
+  // Primary: PSA API
+  const popData = await getPopData(player, year, set, cardNumber)
+  if (popData && popData.total >= 10) {
+    const distribution: GradeDistribution = {
+      10: popData.count10 / popData.total,
+      9:  popData.count9  / popData.total,
+      8:  popData.count8  / popData.total,
+      7:  popData.count7  / popData.total,
+    }
 
     await supabase.from('grade_dist_cache').upsert({
       card_key: cardKey,
-      grades,
-      total,
+      grades: { 10: popData.count10, 9: popData.count9, 8: popData.count8, 7: popData.count7 },
+      total: popData.total,
       last_fetched: new Date().toISOString(),
     })
 
-    return normalizeGrades(grades, total)
-  } catch {
-    return FLAT_PRIOR
+    return { distribution, popData }
   }
+
+  // Fallback: eBay listing grades
+  try {
+    const listings = await searchListings(`${player} ${year} ${set} PSA`)
+    const grades: Partial<Record<GradeKey, number>> = {}
+    let total = 0
+    for (const listing of listings) {
+      const grade = parseGradeFromTitle(listing.title)
+      if (grade !== null) {
+        grades[grade] = (grades[grade] ?? 0) + 1
+        total++
+      }
+    }
+
+    if (total >= 5) {
+      await supabase.from('grade_dist_cache').upsert({
+        card_key: cardKey,
+        grades,
+        total,
+        last_fetched: new Date().toISOString(),
+      })
+      return { distribution: normalizeGrades(grades, total), popData: null }
+    }
+  } catch {
+    // fall through
+  }
+
+  return { distribution: FLAT_PRIOR, popData: null }
 }
 
 function normalizeGrades(
@@ -82,8 +99,8 @@ function normalizeGrades(
   if (total === 0) return FLAT_PRIOR
   return {
     10: (grades[10] ?? 0) / total,
-    9: (grades[9] ?? 0) / total,
-    8: (grades[8] ?? 0) / total,
-    7: (grades[7] ?? 0) / total,
+    9:  (grades[9]  ?? 0) / total,
+    8:  (grades[8]  ?? 0) / total,
+    7:  (grades[7]  ?? 0) / total,
   }
 }

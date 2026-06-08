@@ -53,9 +53,9 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
     const centering = await measureCentering(frontImageUrl, backImageUrl)
 
     // Step 4: Reference images + grade distribution prior (parallel)
-    const [_, prior] = await Promise.all([
+    const [_, priorResult] = await Promise.all([
       ensureReferenceImages(identity.cardKey, identity.player, identity.year, identity.set),
-      getGradeDistribution(identity.cardKey, identity.player, identity.year, identity.set),
+      getGradeDistribution(identity.cardKey, identity.player, identity.year, identity.set, identity.cardNumber),
     ])
 
     const referenceImages = await getReferenceImages(identity.cardKey)
@@ -64,7 +64,7 @@ export async function runPipeline(input: PipelineInput): Promise<void> {
     const attributes = await analyzeAttributes(input.imageUrls, referenceImages)
 
     // Step 6: Bayesian grade distribution
-    const distribution = applyBayesianUpdate(prior, attributes, centering.front.psa10Eligible)
+    const distribution = applyBayesianUpdate(priorResult.distribution, attributes, centering.front.psa10Eligible)
 
     // Step 7: Graded comps + EV (parallel)
     const comps = await fetchGradedComps(identity.player, identity.year, identity.set, identity.cardNumber)
