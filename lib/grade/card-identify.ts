@@ -2,6 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { CardIdentity } from './types'
 import { toAnthropicImageSource } from './image-source'
+import { detectCardType } from './card-type'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -74,7 +75,8 @@ export async function identifyCardFromTitle(title: string): Promise<CardIdentity
     .trim() || 'Unknown'
 
   const cardKey = buildCardKey(player, year, set, cardNumber)
-  const identity: CardIdentity = { player, year, set, cardNumber, cardKey }
+  const cardType = detectCardType(player, year, set, cardNumber)
+  const identity: CardIdentity = { player, year, set, cardNumber, cardKey, cardType }
 
   const gradeMatch = title.match(/\b(PSA|BGS|SGC)\s+(\d+(?:\.\d+)?)\b/i)
   if (gradeMatch) {
@@ -140,12 +142,14 @@ If you cannot determine any field, use null for that field.`
     if (!parsed.player || !parsed.year || !parsed.set || !parsed.cardNumber) return null
 
     const cardKey = buildCardKey(parsed.player, parsed.year, parsed.set, parsed.cardNumber)
+    const cardType = detectCardType(parsed.player, parsed.year, parsed.set, parsed.cardNumber)
     return {
       player: parsed.player,
       year: parsed.year,
       set: parsed.set,
       cardNumber: parsed.cardNumber,
       cardKey,
+      cardType,
     }
   } catch {
     return null
