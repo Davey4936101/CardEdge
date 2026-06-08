@@ -16,7 +16,9 @@ describe('runMultiPass', () => {
       return { multipliers: [call, call, call, call] as [number, number, number, number] }
     })
     const results = await runMultiPass(fn, 3)
-    const avg = averageMultipliers(results.map((r) => r.multipliers))
+    const avg = averageMultipliers(
+      (results as { multipliers: [number, number, number, number] }[]).map((r) => r.multipliers)
+    )
     // calls returned [1,1,1,1], [2,2,2,2], [3,3,3,3] — avg should be [2,2,2,2]
     expect(avg).toEqual([2, 2, 2, 2])
   })
