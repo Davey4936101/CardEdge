@@ -5,32 +5,33 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ModeToggle } from '@/components/grade/ModeToggle'
 import { EbayInput } from '@/components/grade/EbayInput'
-import { CaptureFlow } from '@/components/grade/CaptureFlow'
+import { CaptureProtocol } from '@/components/grade/CaptureProtocol'
 import { PhotoGrid } from '@/components/grade/PhotoGrid'
 import { ReliabilityBanner } from '@/components/grade/ReliabilityBanner'
 import { CardConfirmation } from '@/components/grade/CardConfirmation'
 import { AnalysisLoader } from '@/components/grade/AnalysisLoader'
-import { AttributeBreakdown } from '@/components/grade/AttributeBreakdown'
+import { SubGradeBreakdown } from '@/components/grade/SubGradeBreakdown'
+import { SubmissionVerdict } from '@/components/grade/SubmissionVerdict'
 import { GradeDistributionChart } from '@/components/grade/GradeDistribution'
-import { EvTable } from '@/components/grade/EvTable'
-import { Recommendation } from '@/components/grade/Recommendation'
 import { CaveatList } from '@/components/grade/CaveatList'
 import { AnalysisHistory } from '@/components/grade/AnalysisHistory'
-import type { GradeAnalysisRow } from '@/lib/grade/types'
+import type { CardImageManifest, GradeAnalysisRow } from '@/lib/grade/types'
 
-type Stage = 'input' | 'analyzing' | 'result'
+type Stage = 'input' | 'confirm' | 'analyzing' | 'result'
 
 export default function GradePage() {
   const router = useRouter()
-  const [mode, setMode] = useState<'ebay' | 'personal'>('ebay')
+  const [mode, setMode] = useState<'ebay' | 'personal'>('personal')
   const [stage, setStage] = useState<Stage>('input')
-  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [manifest, setManifest] = useState<CardImageManifest | null>(null)
+  const [imageUrls, setImageUrls] = useState<string[]>([])          // eBay mode
   const [ebayMeta, setEbayMeta] = useState<{ itemId: string; title: string; price: number | null } | null>(null)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [result, setResult] = useState<GradeAnalysisRow | null>(null)
 
   function reset() {
     setStage('input')
+    setManifest(null)
     setImageUrls([])
     setEbayMeta(null)
     setAnalysisId(null)
@@ -40,16 +41,14 @@ export default function GradePage() {
   async function startAnalysis(confirmedRawPrice: number) {
     setStage('analyzing')
 
+    const body = mode === 'personal'
+      ? { manifest, rawPrice: confirmedRawPrice, mode }
+      : { imageUrls, rawPrice: confirmedRawPrice, mode, ebayItemId: ebayMeta?.itemId, ebayListingTitle: ebayMeta?.title }
+
     const res = await fetch('/api/grade/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        imageUrls,
-        rawPrice: confirmedRawPrice,
-        mode,
-        ebayItemId: ebayMeta?.itemId,
-        ebayListingTitle: ebayMeta?.title,
-      }),
+      body: JSON.stringify(body),
     })
 
     const { analysisId: id } = (await res.json()) as { analysisId: string }
@@ -61,12 +60,14 @@ export default function GradePage() {
     setStage('result')
   }
 
+  const previewUrls = manifest ? Object.values(manifest) : imageUrls
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
       <div className="space-y-1">
         <h1 className="text-3xl font-bold">Pre-Grade</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Predict PSA grade probability and calculate expected grading profit before you submit.
+          Predict PSA grade probability and calculate expected submission profit before you submit.
         </p>
       </div>
 
@@ -79,26 +80,30 @@ export default function GradePage() {
               onImagesLoaded={(urls, meta) => {
                 setImageUrls(urls)
                 setEbayMeta(meta)
+                setStage('confirm')
               }}
             />
           ) : (
-            <CaptureFlow onComplete={(urls) => setImageUrls(urls)} />
+            <CaptureProtocol
+              onComplete={(m) => {
+                setManifest(m)
+                setStage('confirm')
+              }}
+            />
           )}
+        </div>
+      )}
 
-          {imageUrls.length > 0 && (
-            <div className="space-y-4">
-              <PhotoGrid imageUrls={imageUrls} mode={mode} />
-              {mode === 'ebay' && <ReliabilityBanner imageUrls={imageUrls} />}
-              <CardConfirmation
-                imageUrls={imageUrls}
-                listingTitle={ebayMeta?.title}
-                suggestedPrice={ebayMeta?.price ?? undefined}
-                onConfirm={(price) => {
-                  startAnalysis(price)
-                }}
-              />
-            </div>
-          )}
+      {stage === 'confirm' && (
+        <div className="space-y-4">
+          <PhotoGrid imageUrls={previewUrls} mode={mode} />
+          {mode === 'ebay' && <ReliabilityBanner imageUrls={imageUrls} />}
+          <CardConfirmation
+            imageUrls={previewUrls}
+            listingTitle={ebayMeta?.title}
+            suggestedPrice={ebayMeta?.price ?? undefined}
+            onConfirm={startAnalysis}
+          />
         </div>
       )}
 
@@ -114,25 +119,26 @@ export default function GradePage() {
       {stage === 'result' && result && (
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">{result.card_key.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</h2>
+            <h2 className="text-xl font-semibold">
+              {result.card_key.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            </h2>
             <button onClick={reset} className="text-sm text-indigo-500 hover:underline">
               New Analysis
             </button>
           </div>
-          <Recommendation
-              result={result}
-              onTrack={() => {
-                const params = new URLSearchParams({
-                  addFrom: 'analysis',
-                  analysisId: result.id,
-                  player: result.card_key,
-                })
-                router.push(`/portfolio?${params.toString()}`)
-              }}
-            />
-          <AttributeBreakdown result={result} />
+
+          <SubmissionVerdict
+            result={result}
+            onTrack={() => {
+              const params = new URLSearchParams({ addFrom: 'analysis', analysisId: result.id, player: result.card_key })
+              router.push(`/portfolio?${params.toString()}`)
+            }}
+          />
+
+          <SubGradeBreakdown result={result} />
+
           <GradeDistributionChart distribution={result.grade_distribution} comps={result.graded_comps} />
-          <EvTable result={result} />
+
           <CaveatList caveats={result.caveats as string[]} />
         </div>
       )}
